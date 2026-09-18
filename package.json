@@ -1,5 +1,5 @@
 {
-  "name": "functional-programming-jargons",
+  "name": "kotlin-jargon",
   "version": "1.0.0",
   "description": "Jargon from the functional programming world in simple terms!",
   "main": "index.js",
@@ -12,14 +12,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hemanth/functional-programming-jargon.git"
+    "url": "git+https://github.com/kamil-kazmierczak/kotlin-jargon.git"
   },
   "author": "hemanth",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hemanth/functional-programming-jargon/issues"
+    "url": "https://github.com/kamil-kazmierczak/kotlin-jargon/issues"
   },
-  "homepage": "https://github.com/hemanth/functional-programming-jargon#readme",
+  "homepage": "https://github.com/kamil-kazmierczak/kotlin-jargon#readme",
   "devDependencies": {
     "eslint": "^8.20.0",
     "eslint-config-standard": "^17.0.0",

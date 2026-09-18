@@ -1,5 +1,5 @@
 {
-  "name": "fpjargon",
+  "name": "kotlin-jargon",
   "version": "1.0.0",
   "private": true,
   "description": "Interactive knowledge graph exploring functional programming jargons.",
