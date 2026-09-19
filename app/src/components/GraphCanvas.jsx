@@ -11,6 +11,15 @@ const CATEGORY_SYMBOLS = {
   'types-data': '∑'
 };
 
+function stableUnitInterval(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967295;
+}
+
 export default function GraphCanvas({
   graphData,
   categories,
@@ -21,6 +30,8 @@ export default function GraphCanvas({
   soundEnabled,
   isDark,
   isPanelOpen,
+  camera: applicationCamera,
+  onCameraChange,
   onPointerMove
 }) {
   const canvasRef = useRef(null);
@@ -39,17 +50,6 @@ export default function GraphCanvas({
     dragNode: null,
     animId: null,
     clusterCenters: {}
-  });
-
-  // Touch gesture state ref
-  const touchRef = useRef({
-    isPinching: false,
-    startDist: 0,
-    startScale: 1,
-    startX: 0,
-    startY: 0,
-    hasMoved: false,
-    lastTapTime: 0
   });
 
   // Initialize nodes and clusters
@@ -81,12 +81,12 @@ export default function GraphCanvas({
     const nodes = graphData.nodes.map((n, idx) => {
       const cluster = clusterCenters[n.category] || { x: 0, y: 0 };
       const spreadAngle = (idx / graphData.nodes.length) * Math.PI * 2;
-      const spreadDist = 50 + Math.random() * 140;
+      const spreadDist = 50 + stableUnitInterval(`${n.id}:distance`) * 140;
       
       const node = {
         ...n,
-        x: cluster.x + Math.cos(spreadAngle) * spreadDist + (Math.random() - 0.5) * 40,
-        y: cluster.y + Math.sin(spreadAngle) * spreadDist + (Math.random() - 0.5) * 40,
+        x: cluster.x + Math.cos(spreadAngle) * spreadDist + (stableUnitInterval(`${n.id}:x`) - 0.5) * 40,
+        y: cluster.y + Math.sin(spreadAngle) * spreadDist + (stableUnitInterval(`${n.id}:y`) - 0.5) * 40,
         vx: 0,
         vy: 0,
         radius: Math.max(18, Math.min(36, 16 + (n.val || 3) * 2.2)),
@@ -107,8 +107,17 @@ export default function GraphCanvas({
     stateRef.current.links = links;
     stateRef.current.nodeMap = nodeMap;
 
-    // Center camera on initially selected node (e.g. pure-function)
-    if (selectedNodeId) {
+    // Restore a captured view, or center on the initially selected node.
+    if (applicationCamera) {
+      stateRef.current.camera = {
+        x: applicationCamera.x,
+        y: applicationCamera.y,
+        scale: applicationCamera.scale,
+        targetX: applicationCamera.x,
+        targetY: applicationCamera.y,
+        targetScale: applicationCamera.scale
+      };
+    } else if (selectedNodeId) {
       const selNode = nodeMap.get(selectedNodeId);
       if (selNode) {
         stateRef.current.camera.x = -selNode.x;
@@ -142,11 +151,9 @@ export default function GraphCanvas({
 
       const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
       const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
-      const isMobile = winW < 640;
-      const sidebarWidth = (isPanelOpen && !isMobile) ? (winW >= 1024 ? 560 : 500) : 0;
-      const sheetHeight = (isPanelOpen && isMobile) ? winH * 0.46 : 0;
+      const sidebarWidth = isPanelOpen ? (winW >= 1024 ? 560 : 500) : 0;
       const visibleWidth = winW - sidebarWidth;
-      const visibleHeight = winH - sheetHeight;
+      const visibleHeight = winH;
 
       // Ensure all neighbors fit with breathing room for node badges and labels
       const safeRadius = Math.max(160, maxDist + 80);
@@ -154,26 +161,38 @@ export default function GraphCanvas({
       const idealScaleY = (visibleHeight * 0.82) / (safeRadius * 2);
       const idealScale = Math.min(idealScaleX, idealScaleY);
 
-      // Clamp scale
-      const minScale = isMobile ? 0.55 : 0.65;
-      const maxScale = isMobile ? 0.88 : 0.95;
-      const targetScale = Math.max(minScale, Math.min(maxScale, idealScale));
+      const targetScale = Math.max(0.65, Math.min(0.95, idealScale));
 
       let offsetX = 0;
       if (sidebarWidth > 0) {
         offsetX = (sidebarWidth / 2) / targetScale;
       }
 
-      let offsetY = 0;
-      if (sheetHeight > 0) {
-        offsetY = (sheetHeight / 2) / targetScale;
-      }
-
       stateRef.current.camera.targetX = -node.x - offsetX;
-      stateRef.current.camera.targetY = -node.y - offsetY;
+      stateRef.current.camera.targetY = -node.y;
       stateRef.current.camera.targetScale = targetScale;
+      onCameraChange?.({
+        x: stateRef.current.camera.targetX,
+        y: stateRef.current.camera.targetY,
+        scale: targetScale
+      });
     }
-  }, [selectedNodeId, isPanelOpen]);
+  }, [selectedNodeId, isPanelOpen, onCameraChange]);
+
+  // Accept restored camera state without exposing graph geometry to the shell.
+  useEffect(() => {
+    if (!applicationCamera) return;
+    const currentCamera = stateRef.current.camera;
+    if (
+      currentCamera.targetX === applicationCamera.x &&
+      currentCamera.targetY === applicationCamera.y &&
+      currentCamera.targetScale === applicationCamera.scale
+    ) return;
+
+    currentCamera.targetX = applicationCamera.x;
+    currentCamera.targetY = applicationCamera.y;
+    currentCamera.targetScale = applicationCamera.scale;
+  }, [applicationCamera]);
 
   // Simulation & rendering loop
   useEffect(() => {
@@ -608,7 +627,7 @@ export default function GraphCanvas({
     return null;
   }, []);
 
-  // Mouse / Touch Interaction Handlers
+  // Mouse interaction handlers
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;
     const pos = clientToWorld(e.clientX, e.clientY);
@@ -695,117 +714,15 @@ export default function GraphCanvas({
         onSelectNode(hit.id);
         soundEffects.select(soundEnabled);
       }
+    } else {
+      const { camera } = stateRef.current;
+      onCameraChange?.({
+        x: camera.targetX,
+        y: camera.targetY,
+        scale: camera.targetScale
+      });
     }
 
-    stateRef.current.isPanning = false;
-  };
-
-  // Touch Handlers for Mobile
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      const pos = clientToWorld(t.clientX, t.clientY);
-      const hitNode = getNodeAt(pos.x, pos.y);
-
-      // Double-tap check (< 300ms) to reset view
-      const now = Date.now();
-      if (now - touchRef.current.lastTapTime < 300) {
-        handleResetCamera();
-        touchRef.current.lastTapTime = 0;
-        return;
-      }
-      touchRef.current.lastTapTime = now;
-
-      touchRef.current.startX = t.clientX;
-      touchRef.current.startY = t.clientY;
-      touchRef.current.hasMoved = false;
-
-      if (hitNode) {
-        stateRef.current.dragNode = hitNode;
-        hitNode.vx = 0;
-        hitNode.vy = 0;
-      } else {
-        stateRef.current.isPanning = true;
-        stateRef.current.panStart = {
-          x: t.clientX,
-          y: t.clientY,
-          camX: stateRef.current.camera.x,
-          camY: stateRef.current.camera.y
-        };
-      }
-    } else if (e.touches.length === 2) {
-      // 2-finger pinch gesture
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      touchRef.current.isPinching = true;
-      touchRef.current.startDist = dist;
-      touchRef.current.startScale = stateRef.current.camera.scale;
-      stateRef.current.dragNode = null;
-      stateRef.current.isPanning = false;
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (touchRef.current.isPinching && e.touches.length === 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-      if (touchRef.current.startDist > 0) {
-        const factor = dist / touchRef.current.startDist;
-        const newScale = Math.max(0.3, Math.min(3.5, touchRef.current.startScale * factor));
-        stateRef.current.camera.scale = newScale;
-        stateRef.current.camera.targetScale = newScale;
-      }
-      return;
-    }
-
-    if (e.touches.length === 1) {
-      const t = e.touches[0];
-      const moveDist = Math.hypot(t.clientX - touchRef.current.startX, t.clientY - touchRef.current.startY);
-      if (moveDist > 6) {
-        touchRef.current.hasMoved = true;
-      }
-
-      if (stateRef.current.dragNode) {
-        const pos = clientToWorld(t.clientX, t.clientY);
-        stateRef.current.dragNode.x = pos.x;
-        stateRef.current.dragNode.y = pos.y;
-        stateRef.current.dragNode.vx = 0;
-        stateRef.current.dragNode.vy = 0;
-        return;
-      }
-
-      if (stateRef.current.isPanning) {
-        const dx = (t.clientX - stateRef.current.panStart.x) / stateRef.current.camera.scale;
-        const dy = (t.clientY - stateRef.current.panStart.y) / stateRef.current.camera.scale;
-        stateRef.current.camera.x = stateRef.current.panStart.camX + dx;
-        stateRef.current.camera.y = stateRef.current.panStart.camY + dy;
-        stateRef.current.camera.targetX = stateRef.current.camera.x;
-        stateRef.current.camera.targetY = stateRef.current.camera.y;
-      }
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (touchRef.current.isPinching) {
-      if (e.touches.length < 2) {
-        touchRef.current.isPinching = false;
-      }
-      return;
-    }
-
-    if (!touchRef.current.hasMoved) {
-      // Tap on node
-      const pos = clientToWorld(touchRef.current.startX, touchRef.current.startY);
-      const hit = getNodeAt(pos.x, pos.y);
-      if (hit) {
-        onSelectNode(hit.id);
-        soundEffects.select(soundEnabled);
-      }
-    }
-
-    stateRef.current.dragNode = null;
     stateRef.current.isPanning = false;
   };
 
@@ -815,42 +732,45 @@ export default function GraphCanvas({
     const { camera } = stateRef.current;
     const newScale = Math.max(0.3, Math.min(3.5, camera.targetScale * zoomFactor));
     camera.targetScale = newScale;
+    onCameraChange?.({ x: camera.targetX, y: camera.targetY, scale: newScale });
   };
 
   const handleResetCamera = () => {
     const { camera } = stateRef.current;
     const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const isMobile = winW < 640;
-    const targetScale = isMobile ? 0.75 : 0.95;
+    const targetScale = 0.95;
     let offsetX = 0;
-    if (isPanelOpen && !isMobile) {
+    if (isPanelOpen) {
       const sidebarWidth = winW >= 1024 ? 560 : 500;
       offsetX = (sidebarWidth / 2) / targetScale;
     }
-    let offsetY = 0;
-    if (isPanelOpen && isMobile) {
-      offsetY = (winH * 0.46 / 2) / targetScale;
-    }
     camera.targetX = -offsetX;
-    camera.targetY = -offsetY;
+    camera.targetY = 0;
     camera.targetScale = targetScale;
+    onCameraChange?.({ x: -offsetX, y: 0, scale: targetScale });
     soundEffects.toggle(soundEnabled);
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing touch-none"
+      className="relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onWheel={handleWheel}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      role="region"
+      aria-label="Concept graph"
     >
-      <canvas ref={canvasRef} className="block w-full h-full relative z-10" />
+      <canvas ref={canvasRef} className="block w-full h-full relative z-10" aria-hidden="true" />
+
+      <div className="sr-only">
+        {graphData.nodes.map((node) => (
+          <button key={node.id} onClick={() => onSelectNode(node.id)}>
+            Open {node.name} from graph
+          </button>
+        ))}
+      </div>
 
       {/* Floating Hover Tooltip */}
       {tooltip && (
@@ -880,10 +800,8 @@ export default function GraphCanvas({
         </div>
       )}
 
-      {/* Canvas Floating Controls (Adapts dynamically to mobile bottom sheet) */}
-      <div className={`absolute ${
-        isPanelOpen ? 'bottom-[calc(46vh+14px)] sm:bottom-6' : 'bottom-6'
-      } left-4 sm:left-6 flex items-center gap-2 z-20 font-mono transition-all duration-300`}>
+      {/* Canvas Floating Controls */}
+      <div className="absolute bottom-6 left-6 flex items-center gap-2 z-20 font-mono">
         <button
           onClick={handleResetCamera}
           className={`px-2.5 py-1 text-xs border backdrop-blur-md transition flex items-center gap-1.5 ${
@@ -904,8 +822,7 @@ export default function GraphCanvas({
             ? 'text-[#f0f0ee]/60 bg-[#1a1a19]/70 border-[rgba(240,240,238,0.12)]'
             : 'text-[#1a1a19]/60 bg-[#eaeae8]/80 border-[rgba(26,26,25,0.12)]'
         }`}>
-          <span className="hidden sm:inline">drag: pan · scroll: zoom</span>
-          <span className="sm:hidden">drag: pan · pinch: zoom</span>
+          <span>drag: pan · scroll: zoom</span>
         </div>
       </div>
     </div>

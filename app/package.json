@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "node scripts/parse-jargons.js && vite build",
     "preview": "vite preview",
-    "test": "node tests/e2e.test.mjs",
+    "test": "npm run test:state && npm run test:e2e",
+    "test:state": "node --test tests/application-state.test.mjs",
+    "test:e2e": "node tests/e2e.test.mjs",
+    "verify": "npm run build && npm test",
     "parse": "node scripts/parse-jargons.js"
   },
   "dependencies": {

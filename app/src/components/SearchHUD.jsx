@@ -123,6 +123,9 @@ export default function SearchHUD({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search concepts"
         className={`relative w-full max-w-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${
           isDark
             ? 'bg-[#141414] border-[rgba(240,240,238,0.18)] text-[#f0f0ee]'
@@ -138,6 +141,7 @@ export default function SearchHUD({
           <input
             ref={inputRef}
             type="search"
+            aria-label="Search concepts"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -186,7 +190,8 @@ export default function SearchHUD({
               const isHighlighted = index === highlightedIndex;
               const cat = categories[term.category];
               return (
-                <div
+                <button
+                  type="button"
                   key={term.id}
                   onClick={() => {
                     onSelectTerm(term.id);
@@ -194,7 +199,7 @@ export default function SearchHUD({
                     onClose();
                   }}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition-colors duration-100 ${
+                  className={`w-full text-left px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition-colors duration-100 ${
                     isHighlighted
                       ? (isDark ? 'bg-[#222220] text-[#f0f0ee]' : 'bg-[#dededb] text-[#1a1a19]')
                       : (isDark ? 'hover:bg-[#1c1c1a]' : 'hover:bg-[#e4e4e1]')
@@ -224,7 +229,7 @@ export default function SearchHUD({
                   {isHighlighted && (
                     <CornerDownLeft className="w-3.5 h-3.5 shrink-0 opacity-70" />
                   )}
-                </div>
+                </button>
               );
             })
           ) : (

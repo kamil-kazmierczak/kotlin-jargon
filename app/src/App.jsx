@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useReducer, useCallback } from 'react';
 import jargonsData from './data/jargons.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
@@ -13,33 +13,41 @@ import {
   Shuffle
 } from 'lucide-react';
 import { GithubIcon } from './components/Icons';
+import {
+  applicationStateReducer,
+  createApplicationState
+} from './state/applicationState.mjs';
 
 export default function App() {
   const { meta, categories, terms, graph } = jargonsData;
   
-  // Highlighted node on the graph (or from initial URL hash)
-  const [selectedNodeId, setSelectedNodeId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace(/^#/, '');
-      if (hash && terms.some(t => t.id === hash)) {
-        return hash;
-      }
-    }
-    return 'partial-function';
-  });
+  const [applicationState, dispatch] = useReducer(
+    applicationStateReducer,
+    undefined,
+    () => {
+      const hash = typeof window === 'undefined'
+        ? ''
+        : window.location.hash.replace(/^#/, '');
+      const initialConceptId = terms.some((term) => term.id === hash)
+        ? hash
+        : 'partial-function';
 
-  // Sidebar detail panel: open if valid hash in URL on initial load, otherwise closed
-  const [isPanelOpen, setIsPanelOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace(/^#/, '');
-      return Boolean(hash && terms.some(t => t.id === hash));
+      return createApplicationState({
+        selection: {
+          conceptId: initialConceptId,
+          panelOpen: Boolean(hash && initialConceptId === hash)
+        }
+      });
     }
-    return false;
-  });
+  );
+
+  const { selection, graphView } = applicationState;
+  const selectedNodeId = selection.conceptId;
+  const isPanelOpen = selection.panelOpen;
+  const searchQuery = graphView.filters.query;
 
   // Command palette search modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   
   // Customization toggles
   const [useCategoryColors] = useState(true);
@@ -67,11 +75,9 @@ export default function App() {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
       if (hash && allTermsMap[hash]) {
-        setSelectedNodeId(hash);
-        setIsPanelOpen(true);
-        setSearchQuery('');
+        dispatch({ type: 'concept-selected', conceptId: hash });
       } else if (!hash) {
-        setIsPanelOpen(false);
+        dispatch({ type: 'concept-closed' });
       }
     };
 
@@ -81,23 +87,26 @@ export default function App() {
   }, [allTermsMap]);
 
   // Update hash and reset search filter when a node is selected
-  const handleSelectNode = (nodeId) => {
-    setSelectedNodeId(nodeId);
-    setSearchQuery('');
-    if (nodeId) {
-      setIsPanelOpen(true);
-      window.history.replaceState(null, '', `#${nodeId}`);
-    } else {
-      setIsPanelOpen(false);
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  };
+  const handleSelectNode = useCallback((nodeId) => {
+    if (!nodeId) return;
+    dispatch({ type: 'concept-selected', conceptId: nodeId });
+    window.history.replaceState(null, '', `#${nodeId}`);
+  }, []);
 
   // Close drawer
-  const handleClosePanel = () => {
-    setIsPanelOpen(false);
+  const handleClosePanel = useCallback(() => {
+    dispatch({ type: 'concept-closed' });
     window.history.replaceState(null, '', window.location.pathname);
-  };
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    dispatch({ type: 'filter-query-changed', query: '' });
+  }, []);
+
+  const handleCameraChange = useCallback((camera) => {
+    dispatch({ type: 'camera-changed', camera });
+  }, []);
 
   // Pick random term
   const handleRandomTerm = () => {
@@ -129,8 +138,7 @@ export default function App() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (isSearchOpen) {
-          setIsSearchOpen(false);
-          setSearchQuery('');
+          handleCloseSearch();
         } else if (isPanelOpen) {
           handleClosePanel();
         }
@@ -138,7 +146,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, isPanelOpen]);
+  }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen]);
 
   const activeTerm = (selectedNodeId && isPanelOpen) ? allTermsMap[selectedNodeId] : null;
 
@@ -293,6 +301,8 @@ export default function App() {
           soundEnabled={soundEnabled}
           isDark={isDark}
           isPanelOpen={isPanelOpen}
+          camera={graphView.camera}
+          onCameraChange={handleCameraChange}
         />
       </main>
 
@@ -314,18 +324,14 @@ export default function App() {
       <SearchHUD
         isOpen={isSearchOpen}
         onOpen={() => setIsSearchOpen(true)}
-        onClose={() => {
-          setIsSearchOpen(false);
-          setSearchQuery('');
-        }}
+        onClose={handleCloseSearch}
         terms={terms}
         categories={categories}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(query) => dispatch({ type: 'filter-query-changed', query })}
         onSelectTerm={(termId) => {
           handleSelectNode(termId);
           setIsSearchOpen(false);
-          setSearchQuery('');
         }}
         soundEnabled={soundEnabled}
         isDark={isDark}

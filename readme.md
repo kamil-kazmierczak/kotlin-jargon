@@ -9,6 +9,14 @@ Where applicable, this document uses terms defined in the [Fantasy Land spec](ht
 > 🌐 **Interactive Graph**: [hemanth.github.io/functional-programming-jargon](https://hemanth.github.io/functional-programming-jargon)
 > 🤖 **Agent / LLM Spec**: [hemanth.github.io/functional-programming-jargon/llms.txt](https://hemanth.github.io/functional-programming-jargon/llms.txt)
 
+## Verify the application
+
+From the repository root, one command builds the production application and runs the application-state and desktop browser acceptance suites:
+
+```bash
+npm run verify
+```
+
 __Translations__
 * [Portuguese](https://github.com/alexmoreno/jargoes-programacao-funcional)
 * [Spanish](https://github.com/idcmardelplata/functional-programming-jargon/tree/master)

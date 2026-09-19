@@ -7,6 +7,7 @@
     "dev": "npm --prefix app run dev",
     "build": "npm --prefix app run build",
     "preview": "npm --prefix app run preview",
+    "verify": "npm --prefix app run verify",
     "test": "eslint readme.md",
     "toc": "roadmarks"
   },
