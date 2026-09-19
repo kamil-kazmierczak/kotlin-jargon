@@ -115,6 +115,38 @@ server.listen(PORT, '127.0.0.1', async () => {
     assert.equal(page.url(), `${baseUrl}#nullable-types`);
     console.log('✓ Search selection opens Nullable types and its stable URL.');
 
+    console.log('Running acceptance: focused platform-types lesson...');
+    await page.goto(`${baseUrl}#platform-types`, { waitUntil: 'networkidle' });
+    await expectConcept('Platform types');
+    const platformOverview = page.getByRole('region', { name: 'Concept Overview' });
+    await platformOverview.getByText(/flexible view of a Java type/).waitFor({ state: 'visible' });
+    await platformOverview.getByText(/nullability Kotlin cannot prove/).waitFor({ state: 'visible' });
+    await platformOverview.getByText('Core', { exact: true }).waitFor({ state: 'visible' });
+    await platformOverview.getByText('Nullable types', { exact: true }).waitFor({ state: 'visible' });
+    await platformOverview.getByRole('button', { name: 'Study focused lesson' }).click();
+    const lesson = page.getByRole('region', { name: 'Platform types focused lesson' });
+    await lesson.waitFor({ state: 'visible' });
+    const lessonNavigation = page.getByRole('complementary', { name: 'Lesson navigation' });
+    await lessonNavigation.getByRole('button', { name: 'Semantics' }).click();
+    assert.equal(await lessonNavigation.getByRole('button', { name: 'Semantics' }).getAttribute('aria-current'), 'location');
+    await lesson.getByText('Static result: Anonymous').waitFor({ state: 'visible' });
+    await lessonNavigation.getByRole('button', { name: 'Worked example' }).click();
+    await lesson.locator('button[title="Copy code to clipboard"]').first().waitFor({ state: 'visible' });
+    assert.equal(await lesson.locator('code.language-java').count(), 1);
+    assert.equal(await lesson.locator('code.language-kotlin').count(), 2);
+    await lesson.getByText('JavaDirectory').first().waitFor({ state: 'visible' });
+    const deepDive = lesson.getByRole('button', { name: /Deep Dive/ });
+    await deepDive.click();
+    assert.equal(await deepDive.getAttribute('aria-expanded'), 'true');
+    await lesson.getByText(/annotation enhancement/i).waitFor({ state: 'visible' });
+    const studyNavigation = lesson.getByRole('navigation', { name: 'Study path navigation' });
+    assert.equal(await studyNavigation.getByRole('button', { name: 'Previous' }).isDisabled(), false);
+    assert.equal(await studyNavigation.getByRole('button', { name: 'Next' }).isDisabled(), true);
+    await lessonNavigation.getByRole('button', { name: 'Back to graph' }).click();
+    await lesson.waitFor({ state: 'detached' });
+    await page.getByRole('region', { name: 'Concept graph' }).waitFor({ state: 'visible' });
+    console.log('✓ Platform types opens a focused lesson with navigable reading structure and a graph return.');
+
   } catch (err) {
     console.error('Test failed:', err);
     exitCode = 1;

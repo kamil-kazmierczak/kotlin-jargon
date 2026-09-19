@@ -34,6 +34,7 @@ export function createApplicationState(initialState = {}) {
         : DEFAULT_CONCEPT_ID,
       panelOpen: selection.panelOpen === true
     },
+    lessonOpen: initialState.lessonOpen === true,
     graphView: {
       camera: restoreCamera(graphView.camera),
       filters: restoreFilters(graphView.filters),
@@ -60,6 +61,7 @@ export function applicationStateReducer(state, event) {
           conceptId: event.conceptId,
           panelOpen: true
         },
+        lessonOpen: false,
         graphView: {
           ...state.graphView,
           filters: {
@@ -75,6 +77,31 @@ export function applicationStateReducer(state, event) {
           ...state.selection,
           panelOpen: false
         }
+      };
+    case 'lesson-opened':
+      return {
+        ...state,
+        selection: {
+          ...state.selection,
+          panelOpen: false
+        },
+        lessonOpen: true
+      };
+    case 'lesson-closed':
+      return {
+        ...state,
+        selection: {
+          ...state.selection,
+          panelOpen: false
+        },
+        lessonOpen: false
+      };
+    case 'lesson-navigated':
+      if (typeof event.conceptId !== 'string') return state;
+      return {
+        ...state,
+        selection: { conceptId: event.conceptId, panelOpen: false },
+        lessonOpen: true
       };
     case 'filter-query-changed':
       return {

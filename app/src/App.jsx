@@ -3,6 +3,7 @@ import contentData from './data/content.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
 import NodeDetailPanel from './components/NodeDetailPanel';
+import FocusedLesson from './components/FocusedLesson';
 import { soundEffects } from './utils/audio';
 import {
   Search,
@@ -42,7 +43,7 @@ export default function App() {
     }
   );
 
-  const { selection, graphView } = applicationState;
+  const { selection, graphView, lessonOpen } = applicationState;
   const selectedNodeId = selection.conceptId;
   const isPanelOpen = selection.panelOpen;
   const searchQuery = graphView.filters.query;
@@ -98,6 +99,13 @@ export default function App() {
   const handleClosePanel = useCallback(() => {
     dispatch({ type: 'concept-closed' });
     window.history.replaceState(null, '', window.location.pathname);
+  }, []);
+
+  const handleStartLesson = useCallback(() => dispatch({ type: 'lesson-opened' }), []);
+  const handleCloseLesson = useCallback(() => dispatch({ type: 'lesson-closed' }), []);
+  const handleLessonNavigate = useCallback((conceptId) => {
+    dispatch({ type: 'lesson-navigated', conceptId });
+    window.history.replaceState(null, '', `#${conceptId}`);
   }, []);
 
   const handleCloseSearch = useCallback(() => {
@@ -302,6 +310,7 @@ export default function App() {
           soundEnabled={soundEnabled}
           isDark={isDark}
           isPanelOpen={isPanelOpen}
+          isLessonOpen={lessonOpen}
           camera={graphView.camera}
           onCameraChange={handleCameraChange}
         />
@@ -314,11 +323,16 @@ export default function App() {
           categories={categories}
           allConceptsMap={allConceptsMap}
           onSelectConcept={handleSelectNode}
+          onStartLesson={handleStartLesson}
           onClose={handleClosePanel}
           soundEnabled={soundEnabled}
           useCategoryColors={useCategoryColors}
           isDark={isDark}
         />
+      )}
+
+      {lessonOpen && selectedNodeId && allConceptsMap[selectedNodeId]?.profile === 'focused' && (
+        <FocusedLesson concept={allConceptsMap[selectedNodeId]} studyPaths={contentData.studyPaths} onBack={handleCloseLesson} onNavigate={handleLessonNavigate} isDark={isDark} soundEnabled={soundEnabled} />
       )}
 
       {/* Command Palette Search Modal */}

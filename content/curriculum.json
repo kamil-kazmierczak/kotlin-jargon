@@ -17,6 +17,13 @@
       "description": "Kotlin types, null safety, and the values that make invalid states explicit.",
       "color": "#7c3aed",
       "symbol": "?"
+    },
+    {
+      "id": "java-interoperability",
+      "name": "Java interoperability",
+      "description": "Kotlin boundaries with Java APIs, types, and nullability contracts.",
+      "color": "#0f766e",
+      "symbol": "J"
     }
   ],
   "studyPaths": [
@@ -25,7 +32,8 @@
       "name": "Java developer foundations",
       "description": "A curated path through the Kotlin concepts that matter first to an experienced Java developer.",
       "conceptIds": [
-        "nullable-types"
+        "nullable-types",
+        "platform-types"
       ]
     }
   ]

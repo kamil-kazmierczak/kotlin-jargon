@@ -20,6 +20,7 @@ export default function GraphCanvas({
   soundEnabled,
   isDark,
   isPanelOpen,
+  isLessonOpen,
   camera: applicationCamera,
   onCameraChange,
   onPointerMove
@@ -138,7 +139,7 @@ export default function GraphCanvas({
 
       const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
       const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
-      const sidebarWidth = isPanelOpen ? (winW >= 1024 ? 560 : 500) : 0;
+      const sidebarWidth = isLessonOpen ? 0 : (isPanelOpen ? (winW >= 1024 ? 560 : 500) : 0);
       const visibleWidth = winW - sidebarWidth;
       const visibleHeight = winH;
 
@@ -164,7 +165,7 @@ export default function GraphCanvas({
         scale: targetScale
       });
     }
-  }, [selectedNodeId, isPanelOpen, onCameraChange]);
+  }, [selectedNodeId, isPanelOpen, isLessonOpen, onCameraChange]);
 
   // Accept restored camera state without exposing graph geometry to the shell.
   useEffect(() => {
@@ -736,7 +737,7 @@ export default function GraphCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing"
+      className={`relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing transition-all duration-500 ${isLessonOpen ? 'scale-[0.92] opacity-45 blur-[1px]' : ''}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

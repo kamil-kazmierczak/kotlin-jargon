@@ -26,6 +26,7 @@ export default function NodeDetailPanel({
   categories,
   allConceptsMap,
   onSelectConcept,
+  onStartLesson,
   onClose,
   soundEnabled,
   useCategoryColors,
@@ -47,8 +48,13 @@ export default function NodeDetailPanel({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const isFocusedLesson = concept.profile === 'focused';
   const startLesson = () => {
-    document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
+    if (isFocusedLesson) {
+      onStartLesson?.();
+    } else {
+      document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -109,11 +115,11 @@ export default function NodeDetailPanel({
             className="w-full px-3 py-2 text-xs font-semibold border text-white"
             style={{ backgroundColor: accentColor, borderColor: accentColor }}
           >
-            Study this concept
+            {isFocusedLesson ? 'Study focused lesson' : 'Study this concept'}
           </button>
         </section>
 
-        <section id="lesson-start" className="space-y-5 scroll-mt-4">
+        {!isFocusedLesson && <section id="lesson-start" className="space-y-5 scroll-mt-4">
           <div>
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Semantics</h3>
             <Markdown>{concept.lesson.semantics}</Markdown>
@@ -135,7 +141,7 @@ export default function NodeDetailPanel({
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Connections</h3>
             <Markdown>{concept.lesson.connections}</Markdown>
           </div>
-        </section>
+        </section>}
 
         {prerequisites.length > 0 && (
           <section>
@@ -148,7 +154,7 @@ export default function NodeDetailPanel({
           </section>
         )}
 
-        <section>
+        {!isFocusedLesson && <section>
           <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Sources</h3>
           <ul className="space-y-1.5">
             {concept.provenance.sources.map((source) => (
@@ -159,7 +165,7 @@ export default function NodeDetailPanel({
               </li>
             ))}
           </ul>
-        </section>
+        </section>}
       </div>
 
       <div className={`p-3.5 border-t flex justify-between text-[10px] ${isDark ? 'border-white/10' : 'border-black/10'}`}>

@@ -8,7 +8,7 @@ There is a pre-commit hook that runs:  `npm run test && npm run roadmarks` for l
 That said, we'd like to maintain some consistency across the document.
 
 ## Style guide
-1. Every definition should include at least one JavaScript code example.
+1. Every definition should include at least one relevant code example in the language the curriculum teaches.
 1. Definitions should be written using the simplest language possible. Every word should tell.
 1. Target programmers that have no functional programming experience.
 1. We value understandability more than accuracy. e.g. It's okay to describe a functor as a container.
