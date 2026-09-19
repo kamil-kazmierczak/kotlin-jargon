@@ -2,6 +2,6 @@ User-agent: *
 Allow: /
 
 # Agent & LLM Discoverability
-# LLMs: https://hemanth.github.io/functional-programming-jargon/llms.txt
-# Full text: https://hemanth.github.io/functional-programming-jargon/llms-full.txt
-# Data API: https://hemanth.github.io/functional-programming-jargon/data/jargons.json
+# LLMs: https://kamil-kazmierczak.github.io/kotlin-jargon/llms.txt
+# Full text: https://kamil-kazmierczak.github.io/kotlin-jargon/llms-full.txt
+# Data API: https://kamil-kazmierczak.github.io/kotlin-jargon/data/content.json

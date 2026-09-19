@@ -1,4 +1,4 @@
-const DEFAULT_CONCEPT_ID = 'partial-function';
+export const DEFAULT_CONCEPT_ID = 'nullable-types';
 
 function cloneSerializable(value) {
   if (value == null) return null;

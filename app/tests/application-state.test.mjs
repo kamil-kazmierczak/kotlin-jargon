@@ -11,7 +11,7 @@ import {
 test('the default state keeps the graph highlight while the concept panel is closed', () => {
   assert.deepEqual(createApplicationState(), {
     selection: {
-      conceptId: 'partial-function',
+      conceptId: 'nullable-types',
       panelOpen: false
     },
     graphView: {

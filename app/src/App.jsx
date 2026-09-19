@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useReducer, useCallback } from 'react';
-import jargonsData from './data/jargons.json';
+import contentData from './data/content.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
 import NodeDetailPanel from './components/NodeDetailPanel';
@@ -15,11 +15,12 @@ import {
 import { GithubIcon } from './components/Icons';
 import {
   applicationStateReducer,
-  createApplicationState
+  createApplicationState,
+  DEFAULT_CONCEPT_ID
 } from './state/applicationState.mjs';
 
 export default function App() {
-  const { meta, categories, terms, graph } = jargonsData;
+  const { meta, categories, concepts, graph } = contentData;
   
   const [applicationState, dispatch] = useReducer(
     applicationStateReducer,
@@ -28,9 +29,9 @@ export default function App() {
       const hash = typeof window === 'undefined'
         ? ''
         : window.location.hash.replace(/^#/, '');
-      const initialConceptId = terms.some((term) => term.id === hash)
+      const initialConceptId = concepts.some((concept) => concept.id === hash)
         ? hash
-        : 'partial-function';
+        : DEFAULT_CONCEPT_ID;
 
       return createApplicationState({
         selection: {
@@ -63,18 +64,18 @@ export default function App() {
     return false;
   });
 
-  // Map of terms by id for instant lookup
-  const allTermsMap = useMemo(() => {
+  // Map of concepts by permanent ID for instant lookup
+  const allConceptsMap = useMemo(() => {
     const map = {};
-    terms.forEach(t => { map[t.id] = t; });
+    concepts.forEach((concept) => { map[concept.id] = concept; });
     return map;
-  }, [terms]);
+  }, [concepts]);
 
   // Handle URL hash navigation on mount and on hash changes
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
-      if (hash && allTermsMap[hash]) {
+      if (hash && allConceptsMap[hash]) {
         dispatch({ type: 'concept-selected', conceptId: hash });
       } else if (!hash) {
         dispatch({ type: 'concept-closed' });
@@ -84,7 +85,7 @@ export default function App() {
     handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
-  }, [allTermsMap]);
+  }, [allConceptsMap]);
 
   // Update hash and reset search filter when a node is selected
   const handleSelectNode = useCallback((nodeId) => {
@@ -108,11 +109,11 @@ export default function App() {
     dispatch({ type: 'camera-changed', camera });
   }, []);
 
-  // Pick random term
-  const handleRandomTerm = () => {
-    const randomTerm = terms[Math.floor(Math.random() * terms.length)];
-    if (randomTerm) {
-      handleSelectNode(randomTerm.id);
+  // Pick a random concept
+  const handleRandomConcept = () => {
+    const randomConcept = concepts[Math.floor(Math.random() * concepts.length)];
+    if (randomConcept) {
+      handleSelectNode(randomConcept.id);
       soundEffects.select(soundEnabled);
     }
   };
@@ -148,7 +149,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen]);
 
-  const activeTerm = (selectedNodeId && isPanelOpen) ? allTermsMap[selectedNodeId] : null;
+  const activeConcept = (selectedNodeId && isPanelOpen) ? allConceptsMap[selectedNodeId] : null;
 
   return (
     <div className={`relative w-screen h-screen overflow-hidden flex flex-col font-mono transition-colors duration-200 ${
@@ -168,23 +169,23 @@ export default function App() {
               ? 'bg-[#1a1a19] border-[rgba(240,240,238,0.2)] text-[#f0f0ee]'
               : 'bg-[#eaeae8] border-[rgba(26,26,25,0.2)] text-[#1a1a19]'
           }`}>
-            λ
+            K
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xs sm:text-sm font-bold tracking-tight">
-                FP Jargon
+                Kotlin Concepts
               </h1>
               <span className={`hidden md:inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.2 border ${
                 isDark
                   ? 'bg-[#1a1a19] text-[#f0f0ee]/70 border-[rgba(240,240,238,0.15)]'
                   : 'bg-[#eaeae8] text-[#1a1a19]/70 border-[rgba(26,26,25,0.15)]'
               }`}>
-                {meta.totalTerms} Terms
+                {meta.totalConcepts} Concepts
               </span>
             </div>
             <p className="hidden sm:block text-[10px] opacity-60">
-              {meta.totalTerms} concepts · {meta.totalRelationships} relationships
+              {meta.totalConcepts} concepts · {meta.totalRelationships} relationships
             </p>
           </div>
         </div>
@@ -211,7 +212,7 @@ export default function App() {
 
           {/* Random / Surprise Me */}
           <button
-            onClick={handleRandomTerm}
+            onClick={handleRandomConcept}
             title="Pick a random concept"
             aria-label="Pick a random concept"
             className={`p-1.5 border backdrop-blur-md transition ${
@@ -273,7 +274,7 @@ export default function App() {
 
           {/* GitHub Repo Link */}
           <a
-            href="https://github.com/hemanth/functional-programming-jargon"
+            href="https://github.com/kamil-kazmierczak/kotlin-jargon"
             target="_blank"
             rel="noopener noreferrer"
             title="View on GitHub"
@@ -307,12 +308,12 @@ export default function App() {
       </main>
 
       {/* Slideover Detail Drawer */}
-      {activeTerm && (
+      {activeConcept && (
         <NodeDetailPanel
-          term={activeTerm}
+          concept={activeConcept}
           categories={categories}
-          allTermsMap={allTermsMap}
-          onSelectTerm={handleSelectNode}
+          allConceptsMap={allConceptsMap}
+          onSelectConcept={handleSelectNode}
           onClose={handleClosePanel}
           soundEnabled={soundEnabled}
           useCategoryColors={useCategoryColors}
@@ -325,12 +326,12 @@ export default function App() {
         isOpen={isSearchOpen}
         onOpen={() => setIsSearchOpen(true)}
         onClose={handleCloseSearch}
-        terms={terms}
+        concepts={concepts}
         categories={categories}
         searchQuery={searchQuery}
         onSearchChange={(query) => dispatch({ type: 'filter-query-changed', query })}
-        onSelectTerm={(termId) => {
-          handleSelectNode(termId);
+        onSelectConcept={(conceptId) => {
+          handleSelectNode(conceptId);
           setIsSearchOpen(false);
         }}
         soundEnabled={soundEnabled}

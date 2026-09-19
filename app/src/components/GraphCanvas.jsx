@@ -1,16 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { soundEffects } from '../utils/audio';
 
-// Category emblems (math/FP symbols)
-const CATEGORY_SYMBOLS = {
-  'core-functions': 'λ',
-  'composition': '∘',
-  'purity-state': '≡',
-  'category-morphisms': '→',
-  'algebraic-structures': '★',
-  'types-data': '∑'
-};
-
 function stableUnitInterval(value) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -56,14 +46,11 @@ export default function GraphCanvas({
   useEffect(() => {
     if (!graphData || !graphData.nodes) return;
 
-    const clusterAngles = {
-      'core-functions': 0.1 * Math.PI,
-      'composition': 0.45 * Math.PI,
-      'purity-state': 0.8 * Math.PI,
-      'category-morphisms': 1.15 * Math.PI,
-      'algebraic-structures': 1.5 * Math.PI,
-      'types-data': 1.85 * Math.PI
-    };
+    const categoryIds = Object.keys(categories).sort();
+    const clusterAngles = Object.fromEntries(categoryIds.map((categoryId, index) => [
+      categoryId,
+      categoryIds.length === 1 ? 0 : (index / categoryIds.length) * Math.PI * 2
+    ]));
 
     const clusterRadius = 400;
     const clusterCenters = {};
@@ -322,8 +309,7 @@ export default function GraphCanvas({
         nodes.forEach(n => {
           if (
             n.name.toLowerCase().includes(q) ||
-            n.id.includes(q) ||
-            (n.summary && n.summary.toLowerCase().includes(q))
+            n.id.includes(q)
           ) {
             searchMatchedIds.add(n.id);
           }
@@ -405,44 +391,40 @@ export default function GraphCanvas({
           ctx.lineWidth = 2.8;
           ctx.stroke();
 
-          // Flowing energy particle
-          const t = (pulseTime * 1.6) % 1;
-          const px = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * midX + t * t * tx;
-          const py = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * midY + t * t * ty;
-          ctx.beginPath();
-          ctx.arc(px, py, 4, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = strokeColor;
-          ctx.shadowBlur = 8;
-          ctx.fill();
-          ctx.shadowBlur = 0;
+          if (l.type === 'prerequisite') {
+            const t = (pulseTime * 1.6) % 1;
+            const px = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * midX + t * t * tx;
+            const py = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * midY + t * t * ty;
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0;
 
-          // Arrowhead pointing to target
-          const angle = Math.atan2(ty - midY, tx - midX);
-          const arrowDist = l.target.radius + 6;
-          const ax = tx - Math.cos(angle) * arrowDist;
-          const ay = ty - Math.sin(angle) * arrowDist;
-          ctx.save();
-          ctx.translate(ax, ay);
-          ctx.rotate(angle);
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(-7, -4);
-          ctx.lineTo(-7, 4);
-          ctx.closePath();
-          ctx.fillStyle = strokeColor;
-          ctx.fill();
-          ctx.restore();
+            const angle = Math.atan2(ty - midY, tx - midX);
+            const arrowDist = l.target.radius + 6;
+            const ax = tx - Math.cos(angle) * arrowDist;
+            const ay = ty - Math.sin(angle) * arrowDist;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-7, -4);
+            ctx.lineTo(-7, 4);
+            ctx.closePath();
+            ctx.fillStyle = strokeColor;
+            ctx.fill();
+            ctx.restore();
+          }
         } else {
           let alpha = isDark ? 0.22 : 0.28;
           if (isDimmed || isSearchDimmed) alpha = 0.04;
           ctx.strokeStyle = isDark ? `rgba(255, 255, 255, ${alpha})` : `rgba(15, 23, 42, ${alpha})`;
-          ctx.lineWidth = l.type === 'reference' ? 1.0 : 1.4;
-          if (l.type === 'reference') {
-            ctx.setLineDash([3, 4]);
-          } else {
-            ctx.setLineDash([]);
-          }
+          ctx.lineWidth = l.type === 'related' ? 1.0 : 1.4;
+          ctx.setLineDash([]);
           ctx.stroke();
           ctx.setLineDash([]);
         }
@@ -466,7 +448,7 @@ export default function GraphCanvas({
 
         const cat = categories[n.category] || {};
         const baseColor = useCategoryColors ? (cat.color || '#3b82f6') : (isDark ? '#93c5fd' : '#2563eb');
-        const symbol = CATEGORY_SYMBOLS[n.category] || 'λ';
+        const symbol = cat.symbol || 'K';
 
         ctx.save();
         
@@ -794,8 +776,8 @@ export default function GraphCanvas({
           <div className="font-semibold text-xs tracking-tight mb-1">
             {tooltip.node.name}
           </div>
-          <p className="text-[11px] line-clamp-2 leading-relaxed opacity-80">
-            {tooltip.node.summary}
+          <p className="text-[11px] leading-relaxed opacity-80">
+            {tooltip.node.depth}
           </p>
         </div>
       )}

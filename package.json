@@ -1,7 +1,7 @@
 {
   "name": "kotlin-jargon",
   "version": "1.0.0",
-  "description": "Jargon from the functional programming world in simple terms!",
+  "description": "A curated Kotlin/JVM learning graph for experienced Java developers.",
   "main": "index.js",
   "scripts": {
     "dev": "npm --prefix app run dev",
@@ -15,7 +15,7 @@
     "type": "git",
     "url": "git+https://github.com/kamil-kazmierczak/kotlin-jargon.git"
   },
-  "author": "hemanth",
+  "author": "Kamil Kazmierczak",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/kamil-kazmierczak/kotlin-jargon/issues"

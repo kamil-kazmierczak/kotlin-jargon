@@ -2,16 +2,17 @@
   "name": "kotlin-jargon",
   "version": "1.0.0",
   "private": true,
-  "description": "Interactive knowledge graph exploring functional programming jargons.",
+  "description": "A curated Kotlin/JVM learning graph for experienced Java developers.",
   "scripts": {
-    "dev": "vite",
-    "build": "node scripts/parse-jargons.js && vite build",
+    "dev": "node scripts/generate-content.mjs && vite",
+    "build": "node scripts/generate-content.mjs && vite build",
     "preview": "vite preview",
-    "test": "npm run test:state && npm run test:e2e",
+    "test": "npm run test:content && npm run test:state && npm run test:e2e",
+    "test:content": "node --test tests/content-pipeline.test.mjs",
     "test:state": "node --test tests/application-state.test.mjs",
     "test:e2e": "node tests/e2e.test.mjs",
     "verify": "npm run build && npm test",
-    "parse": "node scripts/parse-jargons.js"
+    "generate": "node scripts/generate-content.mjs"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

@@ -6,11 +6,11 @@ export default function SearchHUD({
   isOpen,
   onOpen,
   onClose,
-  terms,
+  concepts,
   categories,
   searchQuery,
   onSearchChange,
-  onSelectTerm,
+  onSelectConcept,
   soundEnabled,
   isDark
 }) {
@@ -41,50 +41,49 @@ export default function SearchHUD({
     }
   }, [isOpen]);
 
-  // Suggested terms when input is empty
+  // Suggested concepts when input is empty
   const defaultSuggestions = useMemo(() => {
-    const popularIds = ['function', 'pure-function', 'currying', 'functor', 'monad', 'partial-function'];
-    return terms.filter(t => popularIds.includes(t.id));
-  }, [terms]);
+    return concepts.slice(0, 8);
+  }, [concepts]);
 
-  // Filtered terms matching query, ranked by relevance
-  const filteredTerms = useMemo(() => {
+  // Filtered concepts matching query, ranked by relevance
+  const filteredConcepts = useMemo(() => {
     if (!searchQuery.trim()) return defaultSuggestions;
     const q = searchQuery.toLowerCase().trim();
     
     const scored = [];
-    for (const t of terms) {
-      const lowerTitle = t.title.toLowerCase();
+    for (const concept of concepts) {
+      const lowerTitle = concept.title.toLowerCase();
       let score = 0;
-      if (lowerTitle === q || t.id === q) {
+      if (lowerTitle === q || concept.id === q) {
         score = 100;
-      } else if (lowerTitle.startsWith(q) || t.id.startsWith(q)) {
+      } else if (lowerTitle.startsWith(q) || concept.id.startsWith(q)) {
         score = 80;
-      } else if (lowerTitle.includes(q) || t.id.includes(q)) {
+      } else if (lowerTitle.includes(q) || concept.id.includes(q)) {
         score = 60;
-      } else if (t.aliases && t.aliases.some(a => a.toLowerCase().includes(q))) {
+      } else if (concept.aliases.some((alias) => alias.toLowerCase().includes(q))) {
         score = 40;
-      } else if (categories[t.category]?.name.toLowerCase().includes(q)) {
+      } else if (categories[concept.curriculum.categoryId]?.name.toLowerCase().includes(q)) {
         score = 30;
-      } else if (t.summary && t.summary.toLowerCase().includes(q)) {
+      } else if (concept.lesson.overview.toLowerCase().includes(q) || concept.lesson.javaDeveloperRelevance.toLowerCase().includes(q)) {
         score = 20;
-      } else if (t.codeBlocks && t.codeBlocks.some(cb => cb.code.toLowerCase().includes(q))) {
+      } else if (concept.lesson.codeBlocks.some((codeBlock) => codeBlock.code.toLowerCase().includes(q))) {
         score = 10;
       }
 
       if (score > 0) {
-        scored.push({ term: t, score });
+        scored.push({ concept, score });
       }
     }
 
     scored.sort((a, b) => b.score - a.score);
-    return scored.map(s => s.term).slice(0, 8);
-  }, [terms, categories, searchQuery, defaultSuggestions]);
+    return scored.map((result) => result.concept).slice(0, 8);
+  }, [concepts, categories, searchQuery, defaultSuggestions]);
 
   // Reset highlight when list changes
   useEffect(() => {
     setHighlightedIndex(0);
-  }, [filteredTerms]);
+  }, [filteredConcepts]);
 
   // Handle keyboard navigation in search results
   const handleKeyDown = (e) => {
@@ -94,21 +93,21 @@ export default function SearchHUD({
       return;
     }
 
-    if (filteredTerms.length === 0) return;
+    if (filteredConcepts.length === 0) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex(prev => (prev + 1) % filteredTerms.length);
+      setHighlightedIndex((previousIndex) => (previousIndex + 1) % filteredConcepts.length);
       soundEffects.hover(soundEnabled);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlightedIndex(prev => (prev - 1 + filteredTerms.length) % filteredTerms.length);
+      setHighlightedIndex((previousIndex) => (previousIndex - 1 + filteredConcepts.length) % filteredConcepts.length);
       soundEffects.hover(soundEnabled);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const selected = filteredTerms[highlightedIndex];
+      const selected = filteredConcepts[highlightedIndex];
       if (selected) {
-        onSelectTerm(selected.id);
+        onSelectConcept(selected.id);
         soundEffects.select(soundEnabled);
         onClose();
       }
@@ -145,7 +144,7 @@ export default function SearchHUD({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Search ${terms.length} concepts, aliases, or code...`}
+            placeholder={`Search ${concepts.length} concepts, aliases, or code...`}
             className="w-full bg-transparent text-xs tracking-tight focus:outline-none placeholder:opacity-40"
           />
 
@@ -178,23 +177,23 @@ export default function SearchHUD({
           isDark ? 'border-[rgba(240,240,238,0.08)] bg-[#141414]' : 'border-[rgba(26,26,25,0.08)] bg-[#e2e2df]'
         }`}>
           <span>
-            {searchQuery.trim() ? `Results (${filteredTerms.length})` : 'Popular Suggestions'}
+            {searchQuery.trim() ? `Results (${filteredConcepts.length})` : 'Popular Suggestions'}
           </span>
           <span>[ ↑↓ ] navigate · [ ↵ ] select</span>
         </div>
 
         {/* Scrollable Results List */}
         <div className="overflow-y-auto divide-y divide-[rgba(240,240,238,0.06)] dark:divide-[rgba(240,240,238,0.06)] divide-[rgba(26,26,25,0.06)]">
-          {filteredTerms.length > 0 ? (
-            filteredTerms.map((term, index) => {
+          {filteredConcepts.length > 0 ? (
+            filteredConcepts.map((concept, index) => {
               const isHighlighted = index === highlightedIndex;
-              const cat = categories[term.category];
+              const cat = categories[concept.curriculum.categoryId];
               return (
                 <button
                   type="button"
-                  key={term.id}
+                  key={concept.id}
                   onClick={() => {
-                    onSelectTerm(term.id);
+                    onSelectConcept(concept.id);
                     soundEffects.select(soundEnabled);
                     onClose();
                   }}
@@ -208,7 +207,7 @@ export default function SearchHUD({
                   <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-xs tracking-tight">
-                        {term.title}
+                        {concept.title}
                       </span>
                       <span
                         className="text-[9px] px-1.5 py-0.2 border"
@@ -222,7 +221,7 @@ export default function SearchHUD({
                       </span>
                     </div>
                     <p className="text-[11px] truncate mt-0.5 opacity-70">
-                      {term.summary}
+                      {concept.lesson.overview}
                     </p>
                   </div>
 
@@ -234,7 +233,7 @@ export default function SearchHUD({
             })
           ) : (
             <div className="p-8 text-center text-xs opacity-50">
-              No functional programming concepts match "{searchQuery}"
+              No Kotlin concepts match "{searchQuery}"
             </div>
           )}
         </div>

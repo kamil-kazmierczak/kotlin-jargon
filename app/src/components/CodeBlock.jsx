@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-kotlin';
 import { Check, Copy } from 'lucide-react';
 import { soundEffects } from '../utils/audio';
 
@@ -93,7 +94,7 @@ export default function CodeBlock({
           isDark ? 'text-[#f0f0ee]' : 'text-[#1a1a19]'
         }`}>
           <code
-            className="language-javascript font-mono"
+            className={`language-${language} font-mono`}
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         </pre>

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "id": "kotlin-jvm-2026-09",
+    "kotlinCompiler": "2.4.20",
+    "languageVersion": "2.4",
+    "apiVersion": "2.4",
+    "jdk": "Eclipse Temurin 21.0.12.1+1",
+    "jvmTarget": "21",
+    "gradle": "9.7.0",
+    "coroutines": "1.11.0"
+  },
+  "categories": [
+    {
+      "id": "type-system",
+      "name": "Type system",
+      "description": "Kotlin types, null safety, and the values that make invalid states explicit.",
+      "color": "#7c3aed",
+      "symbol": "?"
+    }
+  ],
+  "studyPaths": [
+    {
+      "id": "java-developer-foundations",
+      "name": "Java developer foundations",
+      "description": "A curated path through the Kotlin concepts that matter first to an experienced Java developer.",
+      "conceptIds": [
+        "nullable-types"
+      ]
+    }
+  ]
+}

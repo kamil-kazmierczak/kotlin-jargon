@@ -64,13 +64,28 @@ server.listen(PORT, '127.0.0.1', async () => {
     console.log('Running acceptance: clean root visit...');
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await page.getByRole('region', { name: 'Concept graph' }).waitFor({ state: 'visible' });
+    await page.getByRole('heading', { name: 'Kotlin Concepts' }).waitFor({ state: 'visible' });
     assert.equal(await page.getByRole('complementary').count(), 0);
-    console.log('✓ Root visit shows the graph with no concept panel.');
+    assert.equal(await page.getByText('FP Jargon').count(), 0);
+    console.log('✓ Root visit shows the Kotlin graph with no legacy catalogue or concept panel.');
 
     console.log('Running acceptance: direct concept URL...');
-    await page.goto(`${baseUrl}#thunk`, { waitUntil: 'networkidle' });
-    await expectConcept('Thunk');
-    console.log('✓ Direct #thunk URL opens the Thunk concept.');
+    await page.goto(`${baseUrl}#nullable-types`, { waitUntil: 'networkidle' });
+    await expectConcept('Nullable types');
+    const overview = page.getByRole('region', { name: 'Concept Overview' });
+    await overview.getByText(/missing value explicit/).waitFor({ state: 'visible' });
+    await overview.getByText(/Kotlin separates nullable and non-null types/).waitFor({ state: 'visible' });
+    await overview.getByText('Core', { exact: true }).waitFor({ state: 'visible' });
+    await overview.getByText('None', { exact: true }).waitFor({ state: 'visible' });
+    await overview.getByRole('button', { name: 'Study this concept' }).click();
+    await page.waitForFunction(() => {
+      const lesson = document.getElementById('lesson-start');
+      const scroller = lesson?.parentElement;
+      if (!lesson || !scroller) return false;
+      return scroller.scrollTop > 0;
+    });
+    await page.getByRole('heading', { name: 'Semantics' }).waitFor({ state: 'visible' });
+    console.log('✓ Stable URL opens the docked Nullable types Concept Overview.');
 
     console.log('Running acceptance: close concept...');
     await page.getByRole('button', { name: 'Close concept' }).click();
@@ -87,18 +102,18 @@ server.listen(PORT, '127.0.0.1', async () => {
       graphBounds.x + graphBounds.width / 2,
       graphBounds.y + graphBounds.height / 2
     );
-    await expectConcept('Thunk');
-    assert.equal(page.url(), `${baseUrl}#thunk`);
-    console.log('✓ Selecting the centered concept from the graph opens its stable URL.');
+    await expectConcept('Nullable types');
+    assert.equal(page.url(), `${baseUrl}#nullable-types`);
+    console.log('✓ Selecting Nullable types from the graph opens its stable URL.');
 
     console.log('Running acceptance: search selection...');
     await page.keyboard.press('/');
     const search = page.getByRole('dialog', { name: 'Search concepts' });
-    await search.getByRole('searchbox', { name: 'Search concepts' }).fill('profunctor');
+    await search.getByRole('searchbox', { name: 'Search concepts' }).fill('nullable');
     await page.keyboard.press('Enter');
-    await expectConcept('Profunctor');
-    assert.equal(page.url(), `${baseUrl}#profunctor`);
-    console.log('✓ Search selection opens Profunctor and its stable URL.');
+    await expectConcept('Nullable types');
+    assert.equal(page.url(), `${baseUrl}#nullable-types`);
+    console.log('✓ Search selection opens Nullable types and its stable URL.');
 
   } catch (err) {
     console.error('Test failed:', err);
