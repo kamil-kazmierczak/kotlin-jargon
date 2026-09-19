@@ -12,6 +12,7 @@ const COMPACT_SECTIONS = [
 const DEPTHS = new Set(['core', 'deep-dive', 'reference']);
 const PUBLICATION_STATUSES = new Set(['draft', 'review-ready', 'verified']);
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const VERIFICATION_MODES = new Set(['compile', 'run', 'compile-fails', 'fragment', 'pseudocode']);
 
 const SECTION_KEYS = {
   'Overview': 'overview',
@@ -133,10 +134,14 @@ function extractSources(filePath, sourceSection) {
 
 function extractCodeBlocks(markdown) {
   return [...markdown.matchAll(/```([^\n]*)\n([\s\S]*?)```/g)].map((match) => {
-    const [language = '', verification = ''] = match[1].trim().split(/\s+/, 2);
+    const [language = '', verification = '', ...attributes] = match[1].trim().split(/\s+/);
     return {
       language,
       verification: verification || 'unclassified',
+      verificationAttributes: Object.fromEntries(attributes.map((attribute) => {
+        const [key, ...value] = attribute.split('=');
+        return [key, value.join('=')];
+      })),
       code: match[2].trim()
     };
   });
@@ -229,6 +234,11 @@ function validateConceptShape(concept, manifest, issues) {
   }
   if (sources.length === 0 && sectionHeadings.has('Sources')) {
     issues.push(`${filePath}: Sources must contain at least one authoritative HTTPS link`);
+  }
+  for (const codeBlock of concept.codeBlocks) {
+    if (['kotlin', 'java'].includes(codeBlock.language) && !VERIFICATION_MODES.has(codeBlock.verification)) {
+      issues.push(`${filePath}: code block must declare one of ${[...VERIFICATION_MODES].join(', ')} verification modes`);
+    }
   }
 }
 

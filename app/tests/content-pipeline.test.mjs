@@ -14,7 +14,7 @@ const manifest = {
     kotlinCompiler: '2.4.20',
     languageVersion: '2.4',
     apiVersion: '2.4',
-    jdk: 'Eclipse Temurin 21.0.12.1+1',
+    jdk: 'Eclipse Temurin 25.0.1+8-LTS',
     jvmTarget: '21',
     gradle: '9.7.0',
     coroutines: '1.11.0'
@@ -90,6 +90,25 @@ test('parses structured Markdown into metadata and named lesson sections', () =>
     title: 'Kotlin null safety',
     url: 'https://kotlinlang.org/docs/null-safety.html'
   }]);
+  assert.equal(concept.codeBlocks[0].verification, 'fragment');
+});
+
+test('preserves explicit example verification metadata and rejects unclassified code', () => {
+  const verified = parseConceptSource('verified.md', compactConcept.replace(
+    '```kotlin fragment',
+    '```kotlin run id=hello file=Hello.kt main=HelloKt expected=hello'
+  ));
+  assert.deepEqual(verified.codeBlocks[0].verificationAttributes, {
+    id: 'hello', file: 'Hello.kt', main: 'HelloKt', expected: 'hello'
+  });
+
+  assert.throws(
+    () => buildContentModel({
+      manifest,
+      conceptSources: [{ filePath: 'unclassified.md', source: compactConcept.replace('```kotlin fragment', '```kotlin') }]
+    }),
+    (error) => error instanceof ContentValidationError && error.message.includes('verification modes')
+  );
 });
 
 test('rejects malformed front matter with a clear file-specific failure', () => {

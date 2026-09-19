@@ -7,7 +7,8 @@
     "dev": "npm --prefix app run dev",
     "build": "npm --prefix app run build",
     "preview": "npm --prefix app run preview",
-    "verify": "npm --prefix app run verify",
+    "verify": "npm run verify:examples && npm --prefix app run verify",
+    "verify:examples": "./examples/gradlew -p examples --no-daemon verifyExamples",
     "test": "eslint readme.md",
     "toc": "roadmarks"
   },

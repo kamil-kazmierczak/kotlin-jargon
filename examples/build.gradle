@@ -1,0 +1,170 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.gradle.process.ExecOperations
+
+plugins {
+  id 'org.jetbrains.kotlin.jvm' version '2.4.20'
+}
+
+group = 'dev.kamil.kotlinjargon'
+version = '1.0.0'
+
+repositories { mavenCentral() }
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(25)
+    vendor = JvmVendorSpec.ADOPTIUM
+  }
+}
+
+kotlin {
+  jvmToolchain(25)
+  compilerOptions {
+    languageVersion = KotlinVersion.KOTLIN_2_4
+    apiVersion = KotlinVersion.KOTLIN_2_4
+    jvmTarget = JvmTarget.JVM_21
+  }
+}
+
+dependencies {
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.11.0'
+}
+
+def sourceRoot = file('../content')
+def stagingRoot = layout.buildDirectory.dir('example-fixtures')
+def execOperations = services.get(ExecOperations)
+def modes = ['compile', 'run', 'compile-fails', 'fragment', 'pseudocode'] as Set
+def examples = [:].withDefault { [] }
+
+fileTree(sourceRoot).matching { include '**/*.md' }.files.sort { it.path }.each { markdown ->
+  def matcher = (markdown.getText('UTF-8') =~ /(?ms)^```(kotlin|java)\s+(compile|run|compile-fails|fragment|pseudocode)((?:\s+[^\s=]+=[^\s]+)*)\s*\n(.*?)^```\s*$/)
+  matcher.each { match ->
+    def attributes = [:]
+    (match[3].trim() ? match[3].trim().split(/\s+/) : []).each { token ->
+      def pair = token.split('=', 2)
+      attributes[pair[0]] = pair[1]
+    }
+    if (!['fragment', 'pseudocode'].contains(match[2]) && (!attributes.id || !attributes.file)) {
+      throw new GradleException("${markdown}: verified example fences require id=<identity> and file=<source file>")
+    }
+    examples[attributes.id] << [language: match[1], mode: match[2], attributes: attributes, code: match[4].strip()]
+  }
+}
+
+tasks.register('verifyExampleBaseline') {
+  doLast {
+    def baseline = new Properties()
+    file('gradle/verification-baseline.properties').withInputStream { baseline.load(it) }
+    if (gradle.gradleVersion != baseline.gradle) throw new GradleException("Gradle ${baseline.gradle} is required; found ${gradle.gradleVersion}")
+    def runtime = System.getProperty('java.runtime.version')
+    if (JavaVersion.current().majorVersion != '25' || runtime != '25.0.1+8-LTS') {
+      throw new GradleException("${baseline.jdk} is required; found ${System.getProperty('java.vendor')} ${runtime}")
+    }
+  }
+}
+
+def fixtureTasks = []
+examples.each { identity, blocks ->
+  def modesForIdentity = blocks*.mode as Set
+  if (modesForIdentity.size() != 1) throw new GradleException("Example identity '${identity}' must use one verification mode")
+  def mode = modesForIdentity.first()
+  if (!modes.contains(mode)) throw new GradleException("Unknown verification mode '${mode}' for '${identity}'")
+  if (['fragment', 'pseudocode'].contains(mode)) return
+  if (mode == 'run' && !blocks[0].attributes.main) throw new GradleException("Run example '${identity}' requires main=<class>")
+  if (mode == 'run' && blocks[0].attributes.expected == null) throw new GradleException("Run example '${identity}' requires expected=<stdout>")
+  if (mode == 'compile-fails' && !blocks[0].attributes.category) throw new GradleException("compile-fails example '${identity}' requires category=<stable-category>")
+
+  def materialize = tasks.register("materialize${identity.capitalize()}") {
+    outputs.dir(stagingRoot.map { it.dir(identity) })
+    doLast {
+      def destination = stagingRoot.get().dir(identity).asFile
+      blocks.each { block ->
+        def target = new File(destination, "src/main/${block.language}/${block.attributes.file}")
+        target.parentFile.mkdirs()
+        target.setText(block.code + '\n', 'UTF-8')
+      }
+    }
+  }
+
+  if (mode == 'compile-fails') {
+    def failureTask = tasks.register("verify${identity.capitalize()}") {
+      dependsOn materialize
+      doLast {
+        def source = new File(stagingRoot.get().dir(identity).asFile, "src/main/kotlin/${blocks[0].attributes.file}")
+        def output = new ByteArrayOutputStream()
+        def result = execOperations.javaexec {
+          classpath = configurations.detachedConfiguration(dependencies.create('org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.20'))
+          mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+          args '-language-version', '2.4', '-api-version', '2.4', '-jvm-target', '21', '-classpath', configurations.runtimeClasspath.asPath, source.absolutePath
+          ignoreExitValue = true
+          standardOutput = output
+          errorOutput = output
+        }
+        if (result.exitValue == 0) throw new GradleException("${identity} compiled but is marked compile-fails")
+        def diagnostic = output.toString('UTF-8').toLowerCase(Locale.ROOT)
+        def categories = ['type-mismatch': 'type mismatch', 'unresolved-reference': 'unresolved reference']
+        if (!categories.containsKey(blocks[0].attributes.category) || !diagnostic.contains(categories[blocks[0].attributes.category])) {
+          throw new GradleException("${identity} did not produce diagnostic category ${blocks[0].attributes.category}")
+        }
+      }
+    }
+    fixtureTasks << failureTask
+    return
+  }
+
+  def verificationTask = tasks.register("verify${identity.capitalize()}") {
+    dependsOn materialize
+    doLast {
+      def fixtureRoot = stagingRoot.get().dir(identity).asFile
+      def kotlinSources = fileTree(new File(fixtureRoot, 'src/main/kotlin')).matching { include '**/*.kt' }.files
+      def javaSources = fileTree(new File(fixtureRoot, 'src/main/java')).matching { include '**/*.java' }.files
+      def kotlinClasses = new File(buildDir, "classes/examples/${identity}/kotlin")
+      def javaClasses = new File(buildDir, "classes/examples/${identity}/java")
+      kotlinClasses.mkdirs()
+      javaClasses.mkdirs()
+      def launcher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25); vendor = JvmVendorSpec.ADOPTIUM }.get()
+      if (!kotlinSources.empty) {
+        def result = execOperations.javaexec {
+          executable = launcher.executablePath.asFile.absolutePath
+          classpath = configurations.detachedConfiguration(dependencies.create('org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.20'))
+          mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+          args '-language-version', '2.4', '-api-version', '2.4', '-jvm-target', '21', '-classpath', configurations.runtimeClasspath.asPath, '-d', kotlinClasses.absolutePath
+          args kotlinSources*.absolutePath
+          ignoreExitValue = true
+        }
+        if (result.exitValue != 0) throw new GradleException("${identity} Kotlin source did not compile")
+      }
+      if (!javaSources.empty) {
+        def compiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25); vendor = JvmVendorSpec.ADOPTIUM }.get()
+        def result = execOperations.exec {
+          executable = compiler.executablePath.asFile.absolutePath
+          args '--release', '21', '-classpath', kotlinClasses.absolutePath, '-d', javaClasses.absolutePath
+          args javaSources*.absolutePath
+          ignoreExitValue = true
+        }
+        if (result.exitValue != 0) throw new GradleException("${identity} Java source did not compile")
+      }
+      if (mode == 'run') {
+        def output = new ByteArrayOutputStream()
+        execOperations.javaexec {
+          executable = launcher.executablePath.asFile.absolutePath
+          classpath = files(kotlinClasses, javaClasses) + configurations.runtimeClasspath
+          mainClass = blocks[0].attributes.main
+          standardOutput = output
+        }
+        if (output.toString('UTF-8').trim() != blocks[0].attributes.expected) throw new GradleException("${identity} produced unexpected output")
+      }
+    }
+  }
+  fixtureTasks << verificationTask
+}
+
+tasks.register('verifyExamples') {
+  group = 'verification'
+  description = 'Verifies all authored Kotlin/JVM teaching examples.'
+  dependsOn tasks.named('verifyExampleBaseline'), fixtureTasks
+}
+
+fixtureTasks.each { it.configure { dependsOn tasks.named('verifyExampleBaseline') } }

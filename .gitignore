@@ -1,4 +1,7 @@
 node_modules
+.gradle
+**/.gradle
+examples/build
 **/node_modules
 dist
 **/dist
