@@ -23,7 +23,8 @@ test('the default state keeps the graph highlight while the concept panel is clo
       },
       studyPathOverlay: null,
       temporaryReveal: null
-    }
+    },
+    lessonContext: null
   });
 });
 
@@ -99,4 +100,27 @@ test('a hidden search result temporarily reveals its neighborhood and restores t
   const returned = applicationStateReducer(revealed, { type: 'temporary-reveal-returned' });
   assert.deepEqual(returned.graphView.filters, filtered.graphView.filters);
   assert.deepEqual(returned.graphView.studyPathOverlay, filtered.graphView.studyPathOverlay);
+});
+
+test('studying a preview retains a trail and closing the lesson restores its graph entry', () => {
+  const graphEntry = createApplicationState({
+    selection: { conceptId: 'platform-types', panelOpen: false },
+    graphView: {
+      camera: { x: 80, y: -30, scale: 1.2 },
+      filters: { query: '', categoryIds: ['type-system'], depths: ['core', 'deep-dive'] },
+      studyPathOverlay: { pathId: 'foundations' },
+      temporaryReveal: { conceptId: 'platform-types' }
+    }
+  });
+  const opened = applicationStateReducer(graphEntry, { type: 'lesson-opened', conceptId: 'not-null-assertion' });
+  const studyingPreview = applicationStateReducer(opened, { type: 'preview-study-selected', conceptId: 'nullable-types' });
+
+  assert.deepEqual(studyingPreview.lessonContext.trail, [{ conceptId: 'not-null-assertion' }]);
+  const returnedToOrigin = applicationStateReducer(studyingPreview, { type: 'lesson-trail-returned' });
+  assert.equal(returnedToOrigin.selection.conceptId, 'not-null-assertion');
+
+  const closed = applicationStateReducer(returnedToOrigin, { type: 'concept-closed' });
+  assert.deepEqual(closed.selection, graphEntry.selection);
+  assert.deepEqual(closed.graphView, graphEntry.graphView);
+  assert.equal(closed.lessonContext, null);
 });

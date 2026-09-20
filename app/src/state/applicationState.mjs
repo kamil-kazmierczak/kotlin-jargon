@@ -26,6 +26,13 @@ function restoreFilters(filters = {}) {
   };
 }
 
+function captureLessonEntry(state) {
+  return {
+    selection: cloneSerializable(state.selection),
+    graphView: cloneSerializable(state.graphView)
+  };
+}
+
 export function createApplicationState(initialState = {}) {
   const selection = initialState.selection || {};
   const graphView = initialState.graphView || {};
@@ -42,7 +49,8 @@ export function createApplicationState(initialState = {}) {
       filters: restoreFilters(graphView.filters),
       studyPathOverlay: cloneSerializable(graphView.studyPathOverlay),
       temporaryReveal: cloneSerializable(graphView.temporaryReveal)
-    }
+    },
+    lessonContext: null
   };
 }
 
@@ -66,7 +74,44 @@ export function applicationStateReducer(state, event) {
         },
         graphView: state.graphView
       };
+    case 'lesson-opened':
+      if (typeof event.conceptId !== 'string') return state;
+      if (state.lessonContext && state.selection.conceptId === event.conceptId && state.selection.panelOpen) return state;
+      return {
+        ...state,
+        selection: { conceptId: event.conceptId, panelOpen: true },
+        lessonContext: {
+          entry: captureLessonEntry(state),
+          trail: []
+        }
+      };
+    case 'preview-study-selected':
+      if (typeof event.conceptId !== 'string' || !state.lessonContext) return state;
+      return {
+        ...state,
+        selection: { conceptId: event.conceptId, panelOpen: true },
+        lessonContext: {
+          ...state.lessonContext,
+          trail: [...state.lessonContext.trail, { conceptId: state.selection.conceptId }]
+        }
+      };
+    case 'lesson-trail-returned': {
+      const trail = state.lessonContext?.trail || [];
+      const previous = trail.at(-1);
+      if (!previous) return state;
+      return {
+        ...state,
+        selection: { conceptId: previous.conceptId, panelOpen: true },
+        lessonContext: { ...state.lessonContext, trail: trail.slice(0, -1) }
+      };
+    }
     case 'concept-closed':
+      if (state.lessonContext) {
+        return {
+          ...state.lessonContext.entry,
+          lessonContext: null
+        };
+      }
       return {
         ...state,
         selection: {

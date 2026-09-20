@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useReducer, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useReducer, useCallback, useRef } from 'react';
 import contentData from './data/content.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
@@ -29,26 +29,24 @@ export default function App() {
       const hash = typeof window === 'undefined'
         ? ''
         : window.location.hash.replace(/^#/, '');
-      const initialConceptId = concepts.some((concept) => concept.id === hash)
-        ? hash
-        : DEFAULT_CONCEPT_ID;
-
       return createApplicationState({
         selection: {
-          conceptId: initialConceptId,
-          panelOpen: Boolean(hash && initialConceptId === hash)
+          conceptId: DEFAULT_CONCEPT_ID,
+          panelOpen: false
         }
       });
     }
   );
 
   const { selection, graphView } = applicationState;
+  const applicationStateRef = useRef(applicationState);
   const selectedNodeId = selection.conceptId;
   const isPanelOpen = selection.panelOpen;
   const searchQuery = graphView.filters.query;
 
   // Command palette search modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [connectionPreview, setConnectionPreview] = useState(null);
   
   // Customization toggles
   const [useCategoryColors] = useState(true);
@@ -71,12 +69,22 @@ export default function App() {
     return map;
   }, [concepts]);
 
+  useEffect(() => {
+    applicationStateRef.current = applicationState;
+  }, [applicationState]);
+
   // Handle URL hash navigation on mount and on hash changes
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
       if (hash && allConceptsMap[hash]) {
-        dispatch({ type: 'concept-selected', conceptId: hash });
+        const currentState = applicationStateRef.current;
+        const previousConceptId = currentState.lessonContext?.trail.at(-1)?.conceptId;
+        if (!currentState.lessonContext) {
+          dispatch({ type: 'lesson-opened', conceptId: hash });
+        } else if (currentState.selection.conceptId !== hash) {
+          dispatch({ type: previousConceptId === hash ? 'lesson-trail-returned' : 'preview-study-selected', conceptId: hash });
+        }
       } else if (!hash) {
         dispatch({ type: 'concept-closed' });
       }
@@ -87,18 +95,33 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHash);
   }, [allConceptsMap]);
 
-  // Update hash and reset search filter when a node is selected
-  const handleSelectNode = useCallback((nodeId) => {
+  // Opening a lesson captures the graph view; previews deliberately do not.
+  const handleOpenLesson = useCallback((nodeId) => {
     if (!nodeId) return;
-    dispatch({ type: 'concept-selected', conceptId: nodeId });
-    window.history.replaceState(null, '', `#${nodeId}`);
+    setConnectionPreview(null);
+    dispatch({ type: 'lesson-opened', conceptId: nodeId });
+    window.history.pushState(null, '', `#${nodeId}`);
   }, []);
 
   // Close drawer
   const handleClosePanel = useCallback(() => {
+    setConnectionPreview(null);
     dispatch({ type: 'concept-closed' });
-    window.history.replaceState(null, '', window.location.pathname);
+    window.history.pushState(null, '', window.location.pathname);
   }, []);
+
+  const handleStudyPreview = useCallback((conceptId) => {
+    setConnectionPreview(null);
+    dispatch({ type: 'preview-study-selected', conceptId });
+    window.history.pushState(null, '', `#${conceptId}`);
+  }, []);
+
+  const handleReturnAlongTrail = useCallback(() => {
+    const previousConceptId = applicationState.lessonContext?.trail.at(-1)?.conceptId;
+    if (!previousConceptId) return;
+    dispatch({ type: 'lesson-trail-returned' });
+    window.history.pushState(null, '', `#${previousConceptId}`);
+  }, [applicationState.lessonContext]);
 
   const handleCloseSearch = useCallback(() => {
     setIsSearchOpen(false);
@@ -112,7 +135,7 @@ export default function App() {
   const handleRandomConcept = () => {
     const randomConcept = concepts[Math.floor(Math.random() * concepts.length)];
     if (randomConcept) {
-      handleSelectNode(randomConcept.id);
+      handleOpenLesson(randomConcept.id);
       soundEffects.select(soundEnabled);
     }
   };
@@ -139,6 +162,8 @@ export default function App() {
       if (e.key === 'Escape') {
         if (isSearchOpen) {
           handleCloseSearch();
+        } else if (connectionPreview) {
+          setConnectionPreview(null);
         } else if (isPanelOpen) {
           handleClosePanel();
         }
@@ -146,7 +171,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen]);
+  }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen, connectionPreview]);
 
   const activeConcept = (selectedNodeId && isPanelOpen) ? allConceptsMap[selectedNodeId] : null;
 
@@ -295,7 +320,7 @@ export default function App() {
           graphData={graph}
           categories={categories}
           selectedNodeId={selectedNodeId}
-          onSelectNode={handleSelectNode}
+          onSelectNode={handleOpenLesson}
           searchQuery={searchQuery}
           filters={graphView.filters}
           temporaryReveal={graphView.temporaryReveal}
@@ -319,7 +344,11 @@ export default function App() {
           concept={activeConcept}
           categories={categories}
           allConceptsMap={allConceptsMap}
-          onSelectConcept={handleSelectNode}
+          connectionPreview={connectionPreview}
+          onPreviewConcept={setConnectionPreview}
+          onStudyPreview={handleStudyPreview}
+          onReturnAlongTrail={handleReturnAlongTrail}
+          trail={applicationState.lessonContext?.trail || []}
           onClose={handleClosePanel}
           soundEnabled={soundEnabled}
           useCategoryColors={useCategoryColors}
@@ -338,7 +367,7 @@ export default function App() {
         onSearchChange={(query) => dispatch({ type: 'filter-query-changed', query })}
         onSelectConcept={(conceptId) => {
           dispatch({ type: 'search-revealed', conceptId });
-          handleSelectNode(conceptId);
+          handleOpenLesson(conceptId);
           setIsSearchOpen(false);
         }}
         soundEnabled={soundEnabled}

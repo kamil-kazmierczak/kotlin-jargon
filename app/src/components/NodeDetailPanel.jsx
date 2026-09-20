@@ -25,7 +25,11 @@ export default function NodeDetailPanel({
   concept,
   categories,
   allConceptsMap,
-  onSelectConcept,
+  connectionPreview,
+  onPreviewConcept,
+  onStudyPreview,
+  onReturnAlongTrail,
+  trail,
   onClose,
   soundEnabled,
   useCategoryColors,
@@ -40,6 +44,8 @@ export default function NodeDetailPanel({
     .map((id) => allConceptsMap[id])
     .filter(Boolean);
   const related = concept.relationships.related.map((id) => allConceptsMap[id]).filter(Boolean);
+  const previewedConcept = connectionPreview && allConceptsMap[connectionPreview.conceptId];
+  const isPrerequisitePreview = connectionPreview?.relationship === 'prerequisite';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#${concept.id}`);
@@ -142,7 +148,7 @@ export default function NodeDetailPanel({
           <section>
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Best understood after</h3>
             {prerequisites.map((prerequisite) => (
-              <button key={prerequisite.id} onClick={() => onSelectConcept(prerequisite.id)} className="text-xs underline">
+              <button key={prerequisite.id} onClick={() => onPreviewConcept({ conceptId: prerequisite.id, relationship: 'prerequisite' })} className="text-xs underline">
                 {prerequisite.title}
               </button>
             ))}
@@ -153,8 +159,14 @@ export default function NodeDetailPanel({
           <section>
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Related concepts</h3>
             <p className="text-xs opacity-70 mb-2">Related concepts provide context; they are not a required order.</p>
-            {related.map((item) => <button key={item.id} onClick={() => onSelectConcept(item.id)} className="text-xs underline mr-3">{item.title}</button>)}
+            {related.map((item) => <button key={item.id} onClick={() => onPreviewConcept({ conceptId: item.id, relationship: 'related' })} className="text-xs underline mr-3">{item.title}</button>)}
           </section>
+        )}
+
+        {trail.length > 0 && (
+          <button type="button" onClick={onReturnAlongTrail} className="text-xs underline">
+            Return to {allConceptsMap[trail.at(-1).conceptId]?.title} lesson
+          </button>
         )}
 
         <section>
@@ -170,6 +182,33 @@ export default function NodeDetailPanel({
           </ul>
         </section>
       </div>
+
+      {previewedConcept && (
+        <section
+          role="dialog"
+          aria-label={`Concept preview: ${previewedConcept.title}`}
+          className={`absolute inset-x-4 top-24 z-10 border p-5 shadow-xl ${
+            isDark ? 'bg-[#1a1a19] border-white/20' : 'bg-[#dededb] border-black/20'
+          }`}
+        >
+          <p className="text-[10px] uppercase tracking-widest opacity-60">
+            {isPrerequisitePreview ? 'Prerequisite concept' : 'Related concept'}
+          </p>
+          <h3 className="mt-1 text-lg font-bold">{previewedConcept.title}</h3>
+          <p className="mt-3 text-xs leading-relaxed">{previewedConcept.lesson.overview}</p>
+          <p className="mt-3 text-xs opacity-70">
+            This is {isPrerequisitePreview ? 'a prerequisite for' : 'related to'} {concept.title}.
+          </p>
+          <div className="mt-4 flex gap-3 text-xs">
+            <button type="button" onClick={() => onPreviewConcept(null)} className="border border-current/20 px-3 py-2">
+              Return to {concept.title} lesson
+            </button>
+            <button type="button" onClick={() => onStudyPreview(previewedConcept.id)} className="border border-current/20 px-3 py-2 font-semibold">
+              Study {previewedConcept.title}
+            </button>
+          </div>
+        </section>
+      )}
 
       <div className={`p-3.5 border-t flex justify-between text-[10px] ${isDark ? 'border-white/10' : 'border-black/10'}`}>
         <span>Verified {concept.provenance.verifiedAt}</span>

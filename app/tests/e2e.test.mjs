@@ -118,9 +118,40 @@ server.listen(PORT, '127.0.0.1', async () => {
     await hiddenSearch.getByRole('searchbox', { name: 'Search concepts' }).fill('not-null assertion');
     await page.keyboard.press('Enter');
     await expectConcept('Not-null assertion');
+    await page.getByRole('button', { name: 'Close concept' }).click();
+    await page.getByRole('complementary').waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('button', { name: 'Path: Java developer foundations', exact: true }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('button', { name: 'Return to previous view' }).click();
     assert.equal(await page.getByRole('button', { name: 'Path: Java developer foundations', exact: true }).getAttribute('aria-pressed'), 'true');
     console.log('✓ Typed edges, depth filtering, optional path overlay, and temporary hidden-result reveal work together.');
+
+    console.log('Running acceptance: connected-concept preview and lesson trail...');
+    await page.goto(`${baseUrl}#not-null-assertion`, { waitUntil: 'networkidle' });
+    await expectConcept('Not-null assertion');
+    await page.getByRole('button', { name: 'Nullable types', exact: true }).click();
+    const preview = page.getByRole('dialog', { name: 'Concept preview: Nullable types' });
+    await preview.getByText('Prerequisite concept').waitFor({ state: 'visible' });
+    await preview.getByText(/This is a prerequisite for Not-null assertion/).waitFor({ state: 'visible' });
+    await page.keyboard.press('Escape');
+    await preview.waitFor({ state: 'detached' });
+    await expectConcept('Not-null assertion');
+    await page.getByRole('button', { name: 'Platform types', exact: true }).click();
+    const relatedPreview = page.getByRole('dialog', { name: 'Concept preview: Platform types' });
+    await relatedPreview.getByText('Related concept').waitFor({ state: 'visible' });
+    await relatedPreview.getByText(/This is related to Not-null assertion/).waitFor({ state: 'visible' });
+    await relatedPreview.getByRole('button', { name: 'Return to Not-null assertion lesson' }).click();
+    await page.getByRole('button', { name: 'Nullable types', exact: true }).click();
+    await preview.getByRole('button', { name: 'Study Nullable types' }).click();
+    await expectConcept('Nullable types');
+    await page.goBack();
+    await expectConcept('Not-null assertion');
+    await page.goForward();
+    await expectConcept('Nullable types');
+    await page.getByRole('button', { name: 'Return to Not-null assertion lesson' }).click();
+    await expectConcept('Not-null assertion');
+    await page.getByRole('button', { name: 'Close concept' }).click();
+    await page.getByRole('complementary').waitFor({ state: 'detached' });
+    console.log('✓ Preview, Escape return, explicit study, trail-back, and lesson close agree.');
 
   } catch (err) {
     console.error('Test failed:', err);
