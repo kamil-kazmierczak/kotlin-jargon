@@ -24,6 +24,8 @@ Validates the canonical concept Markdown and curriculum manifest, generates appl
 
 The canonical authored content lives in `content/concepts/`, while `content/curriculum.json` owns category definitions, the Kotlin/JVM baseline, and curated study-path order. Generated JSON and LLM exports are ignored build artifacts.
 
+See [`docs/publication-contract.md`](../docs/publication-contract.md) for the human-review fields, publication transitions, preview isolation, generated representations, and baseline-upgrade checks enforced by `npm run verify`.
+
 ## Agent & LLM discovery
 
 Every concept, type signature, and code example is exposed in standardized format for AI agents and LLMs.

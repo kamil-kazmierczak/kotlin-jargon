@@ -5,9 +5,18 @@ profile: compact
 category: type-system
 depth: reference
 publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 publishedAt: 2026-09-19
 baseline: kotlin-jvm-2026-09
 verifiedAt: 2026-09-19
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-20
+reviewReference: commit:2eaf8f5
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [nullable-types]
 relatedIds: [platform-types]
 aliases: [double bang, !!]

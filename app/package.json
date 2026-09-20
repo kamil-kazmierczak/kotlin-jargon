@@ -11,8 +11,12 @@
     "test:content": "node --test tests/content-pipeline.test.mjs",
     "test:state": "node --test tests/application-state.test.mjs",
     "test:e2e": "node tests/e2e.test.mjs",
-    "verify": "npm run build && npm test",
-    "generate": "node scripts/generate-content.mjs"
+    "verify": "npm run verify:baseline && npm run verify:reviews && npm run verify:generation && npm run build && npm test",
+    "verify:baseline": "node scripts/verify-baseline.mjs",
+    "verify:reviews": "node scripts/verify-human-reviews.mjs",
+    "verify:generation": "node scripts/verify-generation.mjs",
+    "generate": "node scripts/generate-content.mjs",
+    "generate:preview": "node scripts/generate-content.mjs --preview"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

@@ -6,9 +6,10 @@ import {
   buildContentModel,
   parseConceptSource
 } from '../scripts/content-pipeline.mjs';
+import { renderGeneratedArtifacts } from '../scripts/generated-artifacts.mjs';
 
 const manifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   baseline: {
     id: 'kotlin-jvm-2026-09',
     kotlinCompiler: '2.4.20',
@@ -17,8 +18,13 @@ const manifest = {
     jdk: 'Eclipse Temurin 25.0.1+8-LTS',
     jvmTarget: '21',
     gradle: '9.7.0',
-    coroutines: '1.11.0'
+    coroutines: '1.11.0',
+    previousId: null,
+    adoptedAt: '2026-09-19',
+    upgradeRationale: 'Establish the first reproducible teaching baseline.',
+    sourceUrl: 'https://kotlinlang.org/docs/releases.html'
   },
+  officialSourceHosts: ['kotlinlang.org'],
   categories: [
     {
       id: 'type-system',
@@ -44,9 +50,18 @@ profile: compact
 category: type-system
 depth: core
 publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 publishedAt: 2026-09-19
 baseline: kotlin-jvm-2026-09
 verifiedAt: 2026-09-19
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-19
+reviewReference: commit:5031ac8
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: []
 relatedIds: []
 aliases: [null safety, nullable]
@@ -78,6 +93,17 @@ This concept is the foundation for safe Java boundaries.
 
 - [Kotlin null safety](https://kotlinlang.org/docs/null-safety.html)
 `;
+
+function draftConcept({ id = 'safe-calls', title = 'Safe calls' } = {}) {
+  return compactConcept
+    .replaceAll('nullable-types', id)
+    .replace('title: Nullable types', `title: ${title}`)
+    .replace('publicationStatus: verified', 'publicationStatus: draft')
+    .replace('publicationHistory: [draft, review-ready, verified]', 'publicationHistory: [draft]')
+    .replace('publishedAt: 2026-09-19\n', '')
+    .replace('verifiedAt: 2026-09-19\n', '')
+    .replace(/reviewerKind: human\nreviewedBy: kamil-kazmierczak\nreviewedAt: 2026-09-19\nreviewReference: commit:5031ac8\nreviewPedagogicalClarity: true\nreviewAuthoritativeSupport: true\nreviewInterviewRealism: true\nreviewGuaranteeWording: true\n/, '');
+}
 
 const interviewPractice = `
 ## Interview question
@@ -229,6 +255,119 @@ test('rejects concepts assigned to unknown manifest categories', () => {
   );
 });
 
+test('rejects invalid publication values and transition histories', () => {
+  for (const [replacement, expected] of [
+    ['publicationStatus: published', 'unknown publication status "published"'],
+    ['publicationHistory: [draft, verified]', 'invalid publication transition "draft" to "verified"'],
+    ['publicationHistory: [draft, review-ready]', 'publication history must end at status "verified"'],
+    ['publicationHistory: [verified]', 'publication history must start at status "draft"']
+  ]) {
+    const source = replacement.startsWith('publicationStatus')
+      ? compactConcept.replace('publicationStatus: verified', replacement)
+      : compactConcept.replace('publicationHistory: [draft, review-ready, verified]', replacement);
+
+    assert.throws(
+      () => buildContentModel({ manifest, conceptSources: [{ filePath: 'invalid.md', source }] }),
+      (error) => error instanceof ContentValidationError && error.message.includes(expected)
+    );
+  }
+});
+
+test('requires official correctness provenance and human publication confirmation for verified concepts', () => {
+  const cases = [
+    [compactConcept.replace('https://kotlinlang.org/docs/null-safety.html', 'https://example.com/null-safety'), 'official correctness source'],
+    [compactConcept.replace('reviewerKind: human', 'reviewerKind: ai'), 'reviewerKind must be "human"'],
+    [compactConcept.replace('reviewPedagogicalClarity: true', 'reviewPedagogicalClarity: false'), 'reviewPedagogicalClarity must be true']
+  ];
+
+  for (const [source, expected] of cases) {
+    assert.throws(
+      () => buildContentModel({ manifest, conceptSources: [{ filePath: 'unverified.md', source }] }),
+      (error) => error instanceof ContentValidationError && error.message.includes(expected)
+    );
+  }
+});
+
+test('production excludes drafts from concepts, graph relationships, and study paths while preview remains explicit', () => {
+  const draft = draftConcept();
+  const verified = compactConcept.replace('relatedIds: []', 'relatedIds: [safe-calls]');
+  const mixedManifest = {
+    ...manifest,
+    studyPaths: [{ ...manifest.studyPaths[0], conceptIds: ['nullable-types', 'safe-calls'] }]
+  };
+  const input = {
+    manifest: mixedManifest,
+    conceptSources: [
+      { filePath: 'nullable-types.md', source: verified },
+      { filePath: 'safe-calls.md', source: draft }
+    ]
+  };
+
+  const production = buildContentModel(input);
+  assert.deepEqual(production.concepts.map(({ id }) => id), ['nullable-types']);
+  assert.deepEqual(production.concepts[0].relationships.related, []);
+  assert.deepEqual(production.studyPaths[0].conceptIds, ['nullable-types']);
+  assert.deepEqual(production.graph.nodes.map(({ id }) => id), ['nullable-types']);
+  assert.deepEqual(production.graph.links, []);
+
+  const preview = buildContentModel(input, { publicationMode: 'preview' });
+  assert.deepEqual(preview.concepts.map(({ id }) => id), ['nullable-types', 'safe-calls']);
+  assert.equal(preview.meta.publicationMode, 'preview');
+});
+
+test('rejects verified concepts omitted from every study path', () => {
+  const noPathManifest = {
+    ...manifest,
+    studyPaths: [{ ...manifest.studyPaths[0], conceptIds: [] }]
+  };
+
+  assert.throws(
+    () => buildContentModel({
+      manifest: noPathManifest,
+      conceptSources: [{ filePath: 'nullable-types.md', source: compactConcept }]
+    }),
+    (error) => error instanceof ContentValidationError && error.message.includes('verified concept "nullable-types" is missing from every study path')
+  );
+});
+
+test('rejects production lesson links that resolve only in preview mode', () => {
+  const draft = draftConcept();
+  const verified = compactConcept.replace(
+    'This concept is the foundation for safe Java boundaries.',
+    'Continue with [safe calls](#safe-calls).'
+  );
+  const mixedManifest = {
+    ...manifest,
+    studyPaths: [{ ...manifest.studyPaths[0], conceptIds: ['nullable-types', 'safe-calls'] }]
+  };
+
+  assert.throws(
+    () => buildContentModel({
+      manifest: mixedManifest,
+      conceptSources: [
+        { filePath: 'nullable-types.md', source: verified },
+        { filePath: 'safe-calls.md', source: draft }
+      ]
+    }),
+    (error) => error instanceof ContentValidationError && error.message.includes('verified concept links to unverified concept "safe-calls"')
+  );
+});
+
+test('rejects malformed internal concept anchors instead of ignoring them', () => {
+  const malformedLink = compactConcept.replace(
+    'This concept is the foundation for safe Java boundaries.',
+    'Continue with [missing concept](#Missing_concept).'
+  );
+
+  assert.throws(
+    () => buildContentModel({
+      manifest,
+      conceptSources: [{ filePath: 'nullable-types.md', source: malformedLink }]
+    }),
+    (error) => error instanceof ContentValidationError && error.message.includes('internal link target "#Missing_concept"')
+  );
+});
+
 test('rejects duplicate permanent concept IDs', () => {
   assert.throws(
     () => buildContentModel({
@@ -303,4 +442,24 @@ test('generation is deterministic regardless of source discovery order', () => {
     JSON.stringify(buildContentModel({ manifest: twoConceptManifest, conceptSources: sources })),
     JSON.stringify(buildContentModel({ manifest: twoConceptManifest, conceptSources: sources.toReversed() }))
   );
+});
+
+test('renders byte-stable application, graph, search, and LLM representations', () => {
+  const model = buildContentModel({
+    manifest,
+    conceptSources: [{ filePath: 'nullable-types.md', source: compactConcept }]
+  });
+  const first = renderGeneratedArtifacts(model);
+  const second = renderGeneratedArtifacts(structuredClone(model));
+
+  assert.deepEqual([...first.keys()], [
+    'src/data/content.json',
+    'public/data/content.json',
+    'public/data/graph.json',
+    'public/data/search-index.json',
+    'public/llms-full.txt',
+    'public/llms.txt'
+  ]);
+  assert.deepEqual([...first], [...second]);
+  assert.deepEqual(JSON.parse(first.get('public/data/search-index.json')).map(({ id }) => id), ['nullable-types']);
 });

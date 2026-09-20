@@ -10,6 +10,16 @@ const COMPACT_SECTIONS = [
 ];
 const DEPTHS = new Set(['core', 'deep-dive', 'reference']);
 const PUBLICATION_STATUSES = new Set(['draft', 'review-ready', 'verified']);
+const PUBLICATION_TRANSITIONS = new Map([
+  ['draft', 'review-ready'],
+  ['review-ready', 'verified']
+]);
+const REVIEW_CONFIRMATIONS = [
+  'reviewPedagogicalClarity',
+  'reviewAuthoritativeSupport',
+  'reviewInterviewRealism',
+  'reviewGuaranteeWording'
+];
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERIFICATION_MODES = new Set(['compile', 'run', 'compile-fails', 'fragment', 'pseudocode']);
 
@@ -179,13 +189,99 @@ export function parseConceptSource(filePath, source) {
 }
 
 function validateManifest(manifest, issues) {
-  if (manifest?.schemaVersion !== 1) issues.push('curriculum.json: schemaVersion must be 1');
+  if (manifest?.schemaVersion !== 2) issues.push('curriculum.json: schemaVersion must be 2');
   if (!manifest?.baseline?.id) issues.push('curriculum.json: baseline.id is required');
+  for (const field of ['adoptedAt', 'upgradeRationale', 'sourceUrl']) {
+    if (!manifest?.baseline?.[field]) issues.push(`curriculum.json: baseline.${field} is required`);
+  }
+  if (!Object.hasOwn(manifest?.baseline || {}, 'previousId')) {
+    issues.push('curriculum.json: baseline.previousId is required (use null for the first baseline)');
+  }
+  if (!Array.isArray(manifest?.officialSourceHosts) || manifest.officialSourceHosts.length === 0) {
+    issues.push('curriculum.json: officialSourceHosts requires at least one trusted documentation host');
+  }
   if (!Array.isArray(manifest?.categories) || manifest.categories.length === 0) {
     issues.push('curriculum.json: at least one category is required');
   }
   if (!Array.isArray(manifest?.studyPaths) || manifest.studyPaths.length === 0) {
     issues.push('curriculum.json: at least one study path is required');
+  }
+
+  for (const [kind, entries] of [['category', manifest?.categories], ['study path', manifest?.studyPaths]]) {
+    const seen = new Set();
+    for (const entry of entries || []) {
+      if (!entry?.id || !ID_PATTERN.test(entry.id)) {
+        issues.push(`curriculum.json: ${kind} IDs must be lowercase kebab-case`);
+      } else if (seen.has(entry.id)) {
+        issues.push(`curriculum.json: duplicate ${kind} ID "${entry.id}"`);
+      }
+      seen.add(entry?.id);
+    }
+  }
+}
+
+function isIsoDate(value) {
+  const parsedDate = typeof value === 'string' ? new Date(`${value}T00:00:00Z`) : null;
+  return typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(parsedDate.getTime()) &&
+    parsedDate.toISOString().slice(0, 10) === value;
+}
+
+function validatePublication(concept, manifest, issues) {
+  const { metadata, filePath, sources } = concept;
+  const status = metadata.publicationStatus;
+  const history = metadata.publicationHistory;
+
+  if (!PUBLICATION_STATUSES.has(status)) {
+    issues.push(`${filePath}: unknown publication status "${status}"`);
+  }
+  if (!Array.isArray(history) || history.length === 0) {
+    issues.push(`${filePath}: publicationHistory must be a non-empty array`);
+  } else {
+    if (history[0] !== 'draft') {
+      issues.push(`${filePath}: publication history must start at status "draft"`);
+    }
+    for (const historyStatus of history) {
+      if (!PUBLICATION_STATUSES.has(historyStatus)) {
+        issues.push(`${filePath}: publication history contains unknown status "${historyStatus}"`);
+      }
+    }
+    for (let index = 1; index < history.length; index += 1) {
+      if (PUBLICATION_TRANSITIONS.get(history[index - 1]) !== history[index]) {
+        issues.push(`${filePath}: invalid publication transition "${history[index - 1]}" to "${history[index]}"`);
+      }
+    }
+    if (history.at(-1) !== status) {
+      issues.push(`${filePath}: publication history must end at status "${status}"`);
+    }
+  }
+
+  if (status !== 'verified') return;
+
+  for (const dateField of ['publishedAt', 'verifiedAt', 'reviewedAt']) {
+    if (!isIsoDate(metadata[dateField])) {
+      issues.push(`${filePath}: ${dateField} must be an ISO date in YYYY-MM-DD form`);
+    }
+  }
+  if (metadata.reviewerKind !== 'human') {
+    issues.push(`${filePath}: reviewerKind must be "human" before publication can be verified`);
+  }
+  if (typeof metadata.reviewedBy !== 'string' || !metadata.reviewedBy.trim()) {
+    issues.push(`${filePath}: reviewedBy must identify the human publication reviewer`);
+  }
+  if (typeof metadata.reviewReference !== 'string' || !/^(commit|issue):\S+/.test(metadata.reviewReference)) {
+    issues.push(`${filePath}: reviewReference must point to the confirming issue or commit`);
+  }
+  for (const confirmation of REVIEW_CONFIRMATIONS) {
+    if (metadata[confirmation] !== true) {
+      issues.push(`${filePath}: ${confirmation} must be true before publication can be verified`);
+    }
+  }
+  const officialHosts = new Set(manifest.officialSourceHosts || []);
+  const hasOfficialSource = sources.some(({ url }) => officialHosts.has(new URL(url).hostname));
+  if (!hasOfficialSource) {
+    issues.push(`${filePath}: verified concepts require an official correctness source from curriculum.json officialSourceHosts`);
   }
 }
 
@@ -193,7 +289,7 @@ function validateConceptShape(concept, manifest, issues) {
   const { metadata, sectionHeadings, sources, filePath } = concept;
   const requiredFields = [
     'id', 'title', 'profile', 'category', 'depth', 'publicationStatus',
-    'publishedAt', 'baseline', 'verifiedAt', 'prerequisiteIds', 'relatedIds'
+    'publicationHistory', 'baseline', 'prerequisiteIds', 'relatedIds'
   ];
 
   for (const field of requiredFields) {
@@ -221,10 +317,7 @@ function validateConceptShape(concept, manifest, issues) {
   if (!DEPTHS.has(metadata.depth)) {
     issues.push(`${filePath}: unknown curriculum depth "${metadata.depth}"`);
   }
-  if (!PUBLICATION_STATUSES.has(metadata.publicationStatus)) {
-    issues.push(`${filePath}: unknown publication status "${metadata.publicationStatus}"`);
-  }
-  if (!manifest.categories.some((category) => category.id === metadata.category)) {
+  if (!(manifest.categories || []).some((category) => category.id === metadata.category)) {
     issues.push(`${filePath}: unknown category "${metadata.category}"`);
   }
   if (metadata.baseline !== manifest.baseline.id) {
@@ -233,14 +326,9 @@ function validateConceptShape(concept, manifest, issues) {
   if (!Array.isArray(metadata.prerequisiteIds) || !Array.isArray(metadata.relatedIds)) {
     issues.push(`${filePath}: prerequisiteIds and relatedIds must be arrays`);
   }
-  for (const dateField of ['publishedAt', 'verifiedAt']) {
+  for (const dateField of ['publishedAt', 'verifiedAt', 'reviewedAt']) {
     const date = metadata[dateField];
-    const parsedDate = typeof date === 'string' ? new Date(`${date}T00:00:00Z`) : null;
-    const isValidDate = typeof date === 'string' &&
-      /^\d{4}-\d{2}-\d{2}$/.test(date) &&
-      !Number.isNaN(parsedDate.getTime()) &&
-      parsedDate.toISOString().slice(0, 10) === date;
-    if (date !== undefined && !isValidDate) {
+    if (date !== undefined && !isIsoDate(date)) {
       issues.push(`${filePath}: ${dateField} must be an ISO date in YYYY-MM-DD form`);
     }
   }
@@ -256,10 +344,12 @@ function validateConceptShape(concept, manifest, issues) {
       issues.push(`${filePath}: code block must declare one of ${[...VERIFICATION_MODES].join(', ')} verification modes`);
     }
   }
+  validatePublication(concept, manifest, issues);
 }
 
 function validateGraph(concepts, manifest, issues) {
   const ids = new Set(concepts.map((concept) => concept.metadata.id));
+  const statuses = new Map(concepts.map((concept) => [concept.metadata.id, concept.metadata.publicationStatus]));
 
   for (const concept of concepts) {
     const { metadata, filePath, sections } = concept;
@@ -273,15 +363,20 @@ function validateGraph(concepts, manifest, issues) {
     }
 
     for (const content of Object.values(sections)) {
-      for (const match of content.matchAll(/\]\(#([a-z0-9-]+)\)/g)) {
-        if (!ids.has(match[1])) {
-          issues.push(`${filePath}: internal link references unknown concept "${match[1]}"`);
+      for (const match of content.matchAll(/\]\(#([^)]+)\)/g)) {
+        const targetId = match[1];
+        if (!ID_PATTERN.test(targetId)) {
+          issues.push(`${filePath}: internal link target "#${targetId}" must use a lowercase kebab-case concept ID`);
+        } else if (!ids.has(targetId)) {
+          issues.push(`${filePath}: internal link references unknown concept "${targetId}"`);
+        } else if (metadata.publicationStatus === 'verified' && statuses.get(targetId) !== 'verified') {
+          issues.push(`${filePath}: verified concept links to unverified concept "${targetId}"`);
         }
       }
     }
   }
 
-  for (const studyPath of manifest.studyPaths) {
+  for (const studyPath of manifest.studyPaths || []) {
     const seen = new Set();
     for (const conceptId of studyPath.conceptIds || []) {
       if (!ids.has(conceptId)) {
@@ -332,6 +427,13 @@ function validateGraph(concepts, manifest, issues) {
     }
   }
 
+  const pathConceptIds = new Set((manifest.studyPaths || []).flatMap(({ conceptIds = [] }) => conceptIds));
+  for (const concept of concepts) {
+    if (concept.metadata.publicationStatus === 'verified' && !pathConceptIds.has(concept.metadata.id)) {
+      issues.push(`${concept.filePath}: verified concept "${concept.metadata.id}" is missing from every study path`);
+    }
+  }
+
   const prerequisites = new Map(concepts.map((concept) => [
     concept.metadata.id,
     concept.metadata.prerequisiteIds || []
@@ -366,7 +468,10 @@ function studyPathMembership(conceptId, studyPaths) {
   });
 }
 
-export function buildContentModel({ manifest, conceptSources }) {
+export function buildContentModel({ manifest, conceptSources }, { publicationMode = 'production' } = {}) {
+  if (!['production', 'preview'].includes(publicationMode)) {
+    throw new ContentValidationError(`unknown publication mode "${publicationMode}"`);
+  }
   const issues = [];
   validateManifest(manifest, issues);
 
@@ -388,15 +493,25 @@ export function buildContentModel({ manifest, conceptSources }) {
 
   if (issues.length > 0) throw new ContentValidationError(issues);
 
-  const publishedConcepts = concepts.filter(({ metadata }) => metadata.publicationStatus === 'verified');
+  const publishedConcepts = publicationMode === 'preview'
+    ? concepts
+    : concepts.filter(({ metadata }) => metadata.publicationStatus === 'verified');
+  const publishedIds = new Set(publishedConcepts.map(({ metadata }) => metadata.id));
+  const generatedStudyPaths = (manifest.studyPaths || []).map((studyPath) => ({
+    ...studyPath,
+    conceptIds: studyPath.conceptIds.filter((conceptId) => publishedIds.has(conceptId))
+  }));
   const relatedEdges = new Map();
   const prerequisiteLinks = [];
 
   for (const concept of publishedConcepts) {
     for (const prerequisiteId of concept.metadata.prerequisiteIds) {
-      prerequisiteLinks.push({ source: prerequisiteId, target: concept.metadata.id, type: 'prerequisite' });
+      if (publishedIds.has(prerequisiteId)) {
+        prerequisiteLinks.push({ source: prerequisiteId, target: concept.metadata.id, type: 'prerequisite' });
+      }
     }
     for (const relatedId of concept.metadata.relatedIds) {
+      if (!publishedIds.has(relatedId)) continue;
       const [source, target] = [concept.metadata.id, relatedId].sort();
       relatedEdges.set(`${source}:${target}`, { source, target, type: 'related' });
     }
@@ -414,11 +529,11 @@ export function buildContentModel({ manifest, conceptSources }) {
     curriculum: {
       categoryId: concept.metadata.category,
       depth: concept.metadata.depth,
-      studyPaths: studyPathMembership(concept.metadata.id, manifest.studyPaths)
+      studyPaths: studyPathMembership(concept.metadata.id, generatedStudyPaths)
     },
     relationships: {
-      prerequisites: concept.metadata.prerequisiteIds,
-      related: concept.metadata.relatedIds
+      prerequisites: concept.metadata.prerequisiteIds.filter((id) => publishedIds.has(id)),
+      related: concept.metadata.relatedIds.filter((id) => publishedIds.has(id))
     },
     lesson: {
       overview: concept.sections.overview,
@@ -443,6 +558,17 @@ export function buildContentModel({ manifest, conceptSources }) {
       sourcePath: concept.filePath,
       baselineId: concept.metadata.baseline,
       verifiedAt: concept.metadata.verifiedAt,
+      humanReview: concept.metadata.reviewerKind === 'human'
+        ? {
+            reviewedBy: concept.metadata.reviewedBy,
+            reviewedAt: concept.metadata.reviewedAt,
+            reference: concept.metadata.reviewReference,
+            pedagogicalClarity: concept.metadata.reviewPedagogicalClarity,
+            authoritativeSupport: concept.metadata.reviewAuthoritativeSupport,
+            interviewRealism: concept.metadata.reviewInterviewRealism,
+            guaranteeWording: concept.metadata.reviewGuaranteeWording
+          }
+        : null,
       sources: concept.sources
     }
   }));
@@ -457,11 +583,12 @@ export function buildContentModel({ manifest, conceptSources }) {
       title: 'Kotlin Concepts',
       subtitle: 'Kotlin/JVM concepts for experienced Java developers',
       totalConcepts: generatedConcepts.length,
-      totalRelationships: links.length
+      totalRelationships: links.length,
+      publicationMode
     },
     baseline: manifest.baseline,
     categories: normalizeCategories(manifest.categories),
-    studyPaths: manifest.studyPaths,
+    studyPaths: generatedStudyPaths,
     concepts: generatedConcepts,
     graph: {
       nodes: generatedConcepts.map((concept) => ({

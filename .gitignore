@@ -9,5 +9,6 @@ dist
 /app/public/data/*.json
 /app/public/llms.txt
 /app/public/llms-full.txt
+/app/.preview/
 /site-preview.png
 .DS_Store

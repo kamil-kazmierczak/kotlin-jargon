@@ -5,9 +5,18 @@ profile: compact
 category: java-interoperability
 depth: deep-dive
 publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 publishedAt: 2026-09-19
 baseline: kotlin-jvm-2026-09
 verifiedAt: 2026-09-19
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-20
+reviewReference: commit:62077ba
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [nullable-types]
 relatedIds: [nullable-types]
 aliases: [String!, Java interop nullability]
