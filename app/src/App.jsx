@@ -3,7 +3,6 @@ import contentData from './data/content.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
 import NodeDetailPanel from './components/NodeDetailPanel';
-import FocusedLesson from './components/FocusedLesson';
 import { soundEffects } from './utils/audio';
 import {
   Search,
@@ -43,7 +42,7 @@ export default function App() {
     }
   );
 
-  const { selection, graphView, lessonOpen } = applicationState;
+  const { selection, graphView } = applicationState;
   const selectedNodeId = selection.conceptId;
   const isPanelOpen = selection.panelOpen;
   const searchQuery = graphView.filters.query;
@@ -101,16 +100,8 @@ export default function App() {
     window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
-  const handleStartLesson = useCallback(() => dispatch({ type: 'lesson-opened' }), []);
-  const handleCloseLesson = useCallback(() => dispatch({ type: 'lesson-closed' }), []);
-  const handleLessonNavigate = useCallback((conceptId) => {
-    dispatch({ type: 'lesson-navigated', conceptId });
-    window.history.replaceState(null, '', `#${conceptId}`);
-  }, []);
-
   const handleCloseSearch = useCallback(() => {
     setIsSearchOpen(false);
-    dispatch({ type: 'filter-query-changed', query: '' });
   }, []);
 
   const handleCameraChange = useCallback((camera) => {
@@ -306,11 +297,17 @@ export default function App() {
           selectedNodeId={selectedNodeId}
           onSelectNode={handleSelectNode}
           searchQuery={searchQuery}
+          filters={graphView.filters}
+          temporaryReveal={graphView.temporaryReveal}
+          studyPathOverlay={graphView.studyPathOverlay}
+          studyPaths={contentData.studyPaths}
+          onToggleFilter={(filter, value) => dispatch({ type: 'filter-toggled', filter, value })}
+          onToggleStudyPath={(pathId) => dispatch({ type: 'study-path-toggled', pathId })}
+          onReturnToPreviousView={() => dispatch({ type: 'temporary-reveal-returned' })}
           useCategoryColors={useCategoryColors}
           soundEnabled={soundEnabled}
           isDark={isDark}
           isPanelOpen={isPanelOpen}
-          isLessonOpen={lessonOpen}
           camera={graphView.camera}
           onCameraChange={handleCameraChange}
         />
@@ -323,16 +320,11 @@ export default function App() {
           categories={categories}
           allConceptsMap={allConceptsMap}
           onSelectConcept={handleSelectNode}
-          onStartLesson={handleStartLesson}
           onClose={handleClosePanel}
           soundEnabled={soundEnabled}
           useCategoryColors={useCategoryColors}
           isDark={isDark}
         />
-      )}
-
-      {lessonOpen && selectedNodeId && allConceptsMap[selectedNodeId]?.profile === 'focused' && (
-        <FocusedLesson concept={allConceptsMap[selectedNodeId]} studyPaths={contentData.studyPaths} onBack={handleCloseLesson} onNavigate={handleLessonNavigate} isDark={isDark} soundEnabled={soundEnabled} />
       )}
 
       {/* Command Palette Search Modal */}
@@ -345,6 +337,7 @@ export default function App() {
         searchQuery={searchQuery}
         onSearchChange={(query) => dispatch({ type: 'filter-query-changed', query })}
         onSelectConcept={(conceptId) => {
+          dispatch({ type: 'search-revealed', conceptId });
           handleSelectNode(conceptId);
           setIsSearchOpen(false);
         }}

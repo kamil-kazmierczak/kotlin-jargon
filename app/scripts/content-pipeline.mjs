@@ -8,20 +8,6 @@ const COMPACT_SECTIONS = [
   'Connections',
   'Sources'
 ];
-const FOCUSED_SECTIONS = [
-  'Overview',
-  'Mental model',
-  'Semantics',
-  'Worked example',
-  'Java comparison',
-  'Common mistakes',
-  'Decision guidance',
-  'Knowledge check',
-  'Interview question',
-  'Model reasoning',
-  'Sources'
-];
-
 const DEPTHS = new Set(['core', 'deep-dive', 'reference']);
 const PUBLICATION_STATUSES = new Set(['draft', 'review-ready', 'verified']);
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -207,21 +193,12 @@ function validateConceptShape(concept, manifest, issues) {
     issues.push(`${filePath}: concept ID "${metadata.id}" must be a lowercase kebab-case permanent ID`);
   }
   if (metadata.profile !== 'compact') {
-    if (metadata.profile !== 'focused') {
-      issues.push(`${filePath}: unsupported lesson profile "${metadata.profile}"`);
-    }
+    issues.push(`${filePath}: unsupported lesson profile "${metadata.profile}"`);
   }
   if (metadata.profile === 'compact') {
     for (const heading of COMPACT_SECTIONS) {
       if (!sectionHeadings.has(heading)) {
         issues.push(`${filePath}: missing required compact section "${heading}"`);
-      }
-    }
-  }
-  if (metadata.profile === 'focused') {
-    for (const heading of FOCUSED_SECTIONS) {
-      if (!sectionHeadings.has(heading)) {
-        issues.push(`${filePath}: missing required focused section "${heading}"`);
       }
     }
   }
@@ -394,7 +371,6 @@ export function buildContentModel({ manifest, conceptSources }) {
       semantics: concept.sections.semantics,
       example: concept.sections.example,
       connections: concept.sections.connections,
-      sections: concept.sections,
       codeBlocks: concept.codeBlocks
     },
     provenance: {

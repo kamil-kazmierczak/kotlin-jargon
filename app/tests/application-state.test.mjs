@@ -14,14 +14,15 @@ test('the default state keeps the graph highlight while the concept panel is clo
       conceptId: 'nullable-types',
       panelOpen: false
     },
-    lessonOpen: false,
     graphView: {
       camera: null,
       filters: {
         query: '',
-        categoryIds: []
+        categoryIds: [],
+        depths: ['core']
       },
-      studyPathOverlay: null
+      studyPathOverlay: null,
+      temporaryReveal: null
     }
   });
 });
@@ -47,12 +48,12 @@ test('captured application state restores selection and the complete graph view 
       conceptId: 'functor',
       panelOpen: true
     },
-    lessonOpen: false,
     graphView: {
       camera: { x: 120, y: -45, scale: 1.25 },
       filters: {
         query: 'func',
-        categoryIds: ['core-functions']
+        categoryIds: ['core-functions'],
+        depths: ['core', 'deep-dive']
       },
       studyPathOverlay: {
         pathId: 'foundations',
@@ -78,7 +79,7 @@ test('graph view updates do not expose geometry to or overwrite selection state'
     type: 'graph-view-changed',
     graphView: {
       camera: { x: 3, y: 4, scale: 0.8 },
-      filters: { query: 'mon', categoryIds: [] },
+      filters: { query: 'mon', categoryIds: [], depths: ['core'] },
       studyPathOverlay: null
     }
   });
@@ -88,18 +89,14 @@ test('graph view updates do not expose geometry to or overwrite selection state'
   assert.equal(updated.graphView.filters.query, 'mon');
 });
 
-test('focused lessons preserve graph context and return to the selected graph node', () => {
-  const selected = applicationStateReducer(createApplicationState(), {
-    type: 'concept-selected',
-    conceptId: 'platform-types'
-  });
-  const studying = applicationStateReducer(selected, { type: 'lesson-opened' });
-
-  assert.equal(studying.selection.conceptId, 'platform-types');
-  assert.equal(studying.selection.panelOpen, false);
-  assert.equal(studying.lessonOpen, true);
-
-  const returned = applicationStateReducer(studying, { type: 'lesson-closed' });
-  assert.equal(returned.selection.panelOpen, false);
-  assert.equal(returned.lessonOpen, false);
+test('a hidden search result temporarily reveals its neighborhood and restores the exact prior view', () => {
+  const filtered = createApplicationState({ graphView: {
+    filters: { categoryIds: ['type-system'], depths: ['core'], query: '' },
+    studyPathOverlay: { pathId: 'foundations' }
+  } });
+  const revealed = applicationStateReducer(filtered, { type: 'search-revealed', conceptId: 'platform-types' });
+  assert.equal(revealed.graphView.temporaryReveal.conceptId, 'platform-types');
+  const returned = applicationStateReducer(revealed, { type: 'temporary-reveal-returned' });
+  assert.deepEqual(returned.graphView.filters, filtered.graphView.filters);
+  assert.deepEqual(returned.graphView.studyPathOverlay, filtered.graphView.studyPathOverlay);
 });

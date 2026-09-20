@@ -19,7 +19,10 @@ function restoreFilters(filters = {}) {
     query: typeof filters.query === 'string' ? filters.query : '',
     categoryIds: Array.isArray(filters.categoryIds)
       ? filters.categoryIds.filter((categoryId) => typeof categoryId === 'string')
-      : []
+      : [],
+    depths: Array.isArray(filters.depths)
+      ? filters.depths.filter((depth) => ['core', 'deep-dive', 'reference'].includes(depth))
+      : ['core']
   };
 }
 
@@ -34,11 +37,11 @@ export function createApplicationState(initialState = {}) {
         : DEFAULT_CONCEPT_ID,
       panelOpen: selection.panelOpen === true
     },
-    lessonOpen: initialState.lessonOpen === true,
     graphView: {
       camera: restoreCamera(graphView.camera),
       filters: restoreFilters(graphView.filters),
-      studyPathOverlay: cloneSerializable(graphView.studyPathOverlay)
+      studyPathOverlay: cloneSerializable(graphView.studyPathOverlay),
+      temporaryReveal: cloneSerializable(graphView.temporaryReveal)
     }
   };
 }
@@ -61,14 +64,7 @@ export function applicationStateReducer(state, event) {
           conceptId: event.conceptId,
           panelOpen: true
         },
-        lessonOpen: false,
-        graphView: {
-          ...state.graphView,
-          filters: {
-            ...state.graphView.filters,
-            query: ''
-          }
-        }
+        graphView: state.graphView
       };
     case 'concept-closed':
       return {
@@ -77,31 +73,6 @@ export function applicationStateReducer(state, event) {
           ...state.selection,
           panelOpen: false
         }
-      };
-    case 'lesson-opened':
-      return {
-        ...state,
-        selection: {
-          ...state.selection,
-          panelOpen: false
-        },
-        lessonOpen: true
-      };
-    case 'lesson-closed':
-      return {
-        ...state,
-        selection: {
-          ...state.selection,
-          panelOpen: false
-        },
-        lessonOpen: false
-      };
-    case 'lesson-navigated':
-      if (typeof event.conceptId !== 'string') return state;
-      return {
-        ...state,
-        selection: { conceptId: event.conceptId, panelOpen: false },
-        lessonOpen: true
       };
     case 'filter-query-changed':
       return {
@@ -114,6 +85,35 @@ export function applicationStateReducer(state, event) {
           }
         }
       };
+    case 'filter-toggled': {
+      const key = event.filter === 'depth' ? 'depths' : 'categoryIds';
+      if (typeof event.value !== 'string') return state;
+      const values = state.graphView.filters[key];
+      return {
+        ...state,
+        graphView: {
+          ...state.graphView,
+          filters: { ...state.graphView.filters, [key]: values.includes(event.value)
+            ? values.filter((value) => value !== event.value) : [...values, event.value] },
+          temporaryReveal: null
+        }
+      };
+    }
+    case 'study-path-toggled':
+      return { ...state, graphView: { ...state.graphView, studyPathOverlay:
+        state.graphView.studyPathOverlay?.pathId === event.pathId ? null : { pathId: event.pathId }, temporaryReveal: null } };
+    case 'search-revealed':
+      if (typeof event.conceptId !== 'string') return state;
+      return { ...state, graphView: { ...state.graphView, temporaryReveal: {
+        conceptId: event.conceptId, previousFilters: cloneSerializable(state.graphView.filters),
+        previousStudyPathOverlay: cloneSerializable(state.graphView.studyPathOverlay)
+      }, filters: { ...state.graphView.filters, query: '' } } };
+    case 'temporary-reveal-returned': {
+      const reveal = state.graphView.temporaryReveal;
+      if (!reveal) return state;
+      return { ...state, graphView: { ...state.graphView, filters: restoreFilters(reveal.previousFilters),
+        studyPathOverlay: cloneSerializable(reveal.previousStudyPathOverlay), temporaryReveal: null } };
+    }
     case 'camera-changed':
       return {
         ...state,

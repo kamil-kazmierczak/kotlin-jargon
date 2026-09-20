@@ -16,11 +16,17 @@ export default function GraphCanvas({
   selectedNodeId,
   onSelectNode,
   searchQuery,
+  filters = { categoryIds: [], depths: ['core'] },
+  temporaryReveal,
+  studyPathOverlay,
+  studyPaths = [],
+  onToggleFilter,
+  onToggleStudyPath,
+  onReturnToPreviousView,
   useCategoryColors,
   soundEnabled,
   isDark,
   isPanelOpen,
-  isLessonOpen,
   camera: applicationCamera,
   onCameraChange,
   onPointerMove
@@ -139,7 +145,7 @@ export default function GraphCanvas({
 
       const winW = typeof window !== 'undefined' ? window.innerWidth : 1280;
       const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
-      const sidebarWidth = isLessonOpen ? 0 : (isPanelOpen ? (winW >= 1024 ? 560 : 500) : 0);
+      const sidebarWidth = isPanelOpen ? (winW >= 1024 ? 560 : 500) : 0;
       const visibleWidth = winW - sidebarWidth;
       const visibleHeight = winH;
 
@@ -165,7 +171,7 @@ export default function GraphCanvas({
         scale: targetScale
       });
     }
-  }, [selectedNodeId, isPanelOpen, isLessonOpen, onCameraChange]);
+  }, [selectedNodeId, isPanelOpen, onCameraChange]);
 
   // Accept restored camera state without exposing graph geometry to the shell.
   useEffect(() => {
@@ -317,6 +323,21 @@ export default function GraphCanvas({
         });
       }
 
+      const visibleIds = new Set();
+      if (temporaryReveal?.conceptId) {
+        visibleIds.add(temporaryReveal.conceptId);
+        links.forEach((link) => {
+          if (link.source.id === temporaryReveal.conceptId) visibleIds.add(link.target.id);
+          if (link.target.id === temporaryReveal.conceptId) visibleIds.add(link.source.id);
+        });
+      } else {
+        nodes.forEach((node) => {
+          const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(node.category);
+          if (categoryMatches && filters.depths.includes(node.depth)) visibleIds.add(node.id);
+        });
+      }
+      const activePath = studyPaths.find((path) => path.id === studyPathOverlay?.pathId);
+
       // Render Cluster Backdrop Glows and Constellation Rings
       Object.keys(clusterCenters).forEach(catId => {
         const cat = categories[catId];
@@ -377,17 +398,21 @@ export default function GraphCanvas({
         const dy = ty - sy;
         const dist = Math.hypot(dx, dy) || 1;
 
-        // Slight curve offset
-        const midX = (sx + tx) / 2 + (-dy / dist) * 16;
-        const midY = (sy + ty) / 2 + (dx / dist) * 16;
+        // Separate the two relationship types even when they join the same nodes.
+        const curveOffset = l.type === 'related' ? -16 : 16;
+        const midX = (sx + tx) / 2 + (-dy / dist) * curveOffset;
+        const midY = (sy + ty) / 2 + (dx / dist) * curveOffset;
+        const sourceCategory = categories[l.source.category];
+        const arrowColor = useCategoryColors && sourceCategory
+          ? sourceCategory.color
+          : (isDark ? '#93c5fd' : '#2563eb');
 
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.quadraticCurveTo(midX, midY, tx, ty);
 
         if (isHighlight) {
-          const cat = categories[l.source.category];
-          const strokeColor = useCategoryColors && cat ? cat.color : (isDark ? '#93c5fd' : '#2563eb');
+          const strokeColor = arrowColor;
           ctx.strokeStyle = strokeColor;
           ctx.lineWidth = 2.8;
           ctx.stroke();
@@ -404,21 +429,6 @@ export default function GraphCanvas({
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            const angle = Math.atan2(ty - midY, tx - midX);
-            const arrowDist = l.target.radius + 6;
-            const ax = tx - Math.cos(angle) * arrowDist;
-            const ay = ty - Math.sin(angle) * arrowDist;
-            ctx.save();
-            ctx.translate(ax, ay);
-            ctx.rotate(angle);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-7, -4);
-            ctx.lineTo(-7, 4);
-            ctx.closePath();
-            ctx.fillStyle = strokeColor;
-            ctx.fill();
-            ctx.restore();
           }
         } else {
           let alpha = isDark ? 0.22 : 0.28;
@@ -429,6 +439,23 @@ export default function GraphCanvas({
           ctx.stroke();
           ctx.setLineDash([]);
         }
+        if (l.type === 'prerequisite') {
+          const angle = Math.atan2(ty - midY, tx - midX);
+          const arrowDist = l.target.radius + 6;
+          const ax = tx - Math.cos(angle) * arrowDist;
+          const ay = ty - Math.sin(angle) * arrowDist;
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.rotate(angle);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-7, -4);
+          ctx.lineTo(-7, 4);
+          ctx.closePath();
+          ctx.fillStyle = isHighlight ? arrowColor : (isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(15, 23, 42, 0.5)');
+          ctx.fill();
+          ctx.restore();
+        }
       };
 
       // Render Links
@@ -436,15 +463,26 @@ export default function GraphCanvas({
         const isHighlight = activeId && (l.source.id === activeId || l.target.id === activeId);
         const isDimmed = activeId && !isHighlight;
         const isSearchDimmed = searchMatchedIds && (!searchMatchedIds.has(l.source.id) || !searchMatchedIds.has(l.target.id));
-        drawCurvedLink(l, isHighlight, isDimmed, isSearchDimmed);
+        const isHidden = !visibleIds.has(l.source.id) || !visibleIds.has(l.target.id);
+        drawCurvedLink(l, isHighlight, isDimmed || isHidden, isSearchDimmed || isHidden);
       });
+
+      if (activePath) {
+        for (let index = 1; index < activePath.conceptIds.length; index += 1) {
+          const source = stateRef.current.nodeMap.get(activePath.conceptIds[index - 1]);
+          const target = stateRef.current.nodeMap.get(activePath.conceptIds[index]);
+          if (!source || !target) continue;
+          ctx.beginPath(); ctx.moveTo(source.x, source.y); ctx.lineTo(target.x, target.y);
+          ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 4; ctx.setLineDash([8, 5]); ctx.stroke(); ctx.setLineDash([]);
+        }
+      }
 
       // Render Nodes
       nodes.forEach(n => {
         const isSelected = n.id === selectedNodeId;
         const isHovered = n.id === hoveredNodeId;
         const isConnected = connectedIds.has(n.id);
-        const isDimmed = activeId && !isConnected;
+        const isDimmed = (activeId && !isConnected) || !visibleIds.has(n.id);
         const isSearchMatched = !searchMatchedIds || searchMatchedIds.has(n.id);
 
         const cat = categories[n.category] || {};
@@ -581,7 +619,7 @@ export default function GraphCanvas({
         cancelAnimationFrame(stateRef.current.animId);
       }
     };
-  }, [categories, selectedNodeId, hoveredNodeId, searchQuery, useCategoryColors, isDark]);
+  }, [categories, selectedNodeId, hoveredNodeId, searchQuery, filters, temporaryReveal, studyPathOverlay, studyPaths, useCategoryColors, isDark]);
 
   // Convert client mouse coordinate to world coordinates
   const clientToWorld = useCallback((clientX, clientY) => {
@@ -602,13 +640,18 @@ export default function GraphCanvas({
     const { nodes } = stateRef.current;
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
+      const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(n.category);
+      const isVisible = temporaryReveal?.conceptId
+        ? n.id === temporaryReveal.conceptId || stateRef.current.links.some((link) => (link.source.id === n.id && link.target.id === temporaryReveal.conceptId) || (link.target.id === n.id && link.source.id === temporaryReveal.conceptId))
+        : categoryMatches && filters.depths.includes(n.depth);
+      if (!isVisible) continue;
       const dist = Math.hypot(n.x - worldX, n.y - worldY);
       if (dist <= n.radius + 8) {
         return n;
       }
     }
     return null;
-  }, []);
+  }, [filters, temporaryReveal]);
 
   // Mouse interaction handlers
   const handleMouseDown = (e) => {
@@ -737,7 +780,7 @@ export default function GraphCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing transition-all duration-500 ${isLessonOpen ? 'scale-[0.92] opacity-45 blur-[1px]' : ''}`}
+      className="relative w-full h-full overflow-hidden select-none cursor-grab active:cursor-grabbing"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -746,6 +789,21 @@ export default function GraphCanvas({
       aria-label="Concept graph"
     >
       <canvas ref={canvasRef} className="block w-full h-full relative z-10" aria-hidden="true" />
+
+      <div className={`absolute top-4 left-4 z-20 max-w-xs p-3 border text-[10px] backdrop-blur-md ${isDark ? 'bg-[#1a1a19]/90 border-white/15' : 'bg-[#eaeae8]/90 border-black/15'}`}>
+        <p className="uppercase tracking-widest opacity-60 mb-2">Explore graph</p>
+        <div className="flex flex-wrap gap-1 mb-2" aria-label="Curriculum depth filters">
+          {['core', 'deep-dive', 'reference'].map((depth) => <button key={depth} onClick={() => onToggleFilter?.('depth', depth)} aria-pressed={filters.depths.includes(depth)} className={`px-1.5 py-1 border ${filters.depths.includes(depth) ? 'border-amber-500 text-amber-600' : 'opacity-50'}`}>{depth}</button>)}
+        </div>
+        <div className="flex flex-wrap gap-1 mb-2" aria-label="Category filters">
+          {Object.values(categories).map((category) => <button key={category.id} onClick={() => onToggleFilter?.('category', category.id)} aria-pressed={filters.categoryIds.length === 0 || filters.categoryIds.includes(category.id)} className="px-1.5 py-1 border" style={{ borderColor: category.color, color: category.color }}>{category.name}</button>)}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {studyPaths.map((path) => <button key={path.id} onClick={() => onToggleStudyPath?.(path.id)} aria-pressed={studyPathOverlay?.pathId === path.id} className={`px-1.5 py-1 border ${studyPathOverlay?.pathId === path.id ? 'border-amber-500 text-amber-600' : ''}`}>Path: {path.name}</button>)}
+        </div>
+        {temporaryReveal && <button onClick={onReturnToPreviousView} className="mt-2 underline">Return to previous view</button>}
+        <p className="mt-2 opacity-60">Solid arrows: prerequisites · thin lines: related · amber dash: study path</p>
+      </div>
 
       <div className="sr-only">
         {graphData.nodes.map((node) => (

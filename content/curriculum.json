@@ -33,7 +33,8 @@
       "description": "A curated path through the Kotlin concepts that matter first to an experienced Java developer.",
       "conceptIds": [
         "nullable-types",
-        "platform-types"
+        "platform-types",
+        "not-null-assertion"
       ]
     }
   ]

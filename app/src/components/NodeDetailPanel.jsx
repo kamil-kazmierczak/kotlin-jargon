@@ -26,7 +26,6 @@ export default function NodeDetailPanel({
   categories,
   allConceptsMap,
   onSelectConcept,
-  onStartLesson,
   onClose,
   soundEnabled,
   useCategoryColors,
@@ -40,6 +39,7 @@ export default function NodeDetailPanel({
   const prerequisites = concept.relationships.prerequisites
     .map((id) => allConceptsMap[id])
     .filter(Boolean);
+  const related = concept.relationships.related.map((id) => allConceptsMap[id]).filter(Boolean);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#${concept.id}`);
@@ -48,13 +48,8 @@ export default function NodeDetailPanel({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const isFocusedLesson = concept.profile === 'focused';
   const startLesson = () => {
-    if (isFocusedLesson) {
-      onStartLesson?.();
-    } else {
-      document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
-    }
+    document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -115,11 +110,11 @@ export default function NodeDetailPanel({
             className="w-full px-3 py-2 text-xs font-semibold border text-white"
             style={{ backgroundColor: accentColor, borderColor: accentColor }}
           >
-            {isFocusedLesson ? 'Study focused lesson' : 'Study this concept'}
+            Study this concept
           </button>
         </section>
 
-        {!isFocusedLesson && <section id="lesson-start" className="space-y-5 scroll-mt-4">
+        <section id="lesson-start" className="space-y-5 scroll-mt-4">
           <div>
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Semantics</h3>
             <Markdown>{concept.lesson.semantics}</Markdown>
@@ -141,7 +136,7 @@ export default function NodeDetailPanel({
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Connections</h3>
             <Markdown>{concept.lesson.connections}</Markdown>
           </div>
-        </section>}
+        </section>
 
         {prerequisites.length > 0 && (
           <section>
@@ -154,7 +149,15 @@ export default function NodeDetailPanel({
           </section>
         )}
 
-        {!isFocusedLesson && <section>
+        {related.length > 0 && (
+          <section>
+            <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Related concepts</h3>
+            <p className="text-xs opacity-70 mb-2">Related concepts provide context; they are not a required order.</p>
+            {related.map((item) => <button key={item.id} onClick={() => onSelectConcept(item.id)} className="text-xs underline mr-3">{item.title}</button>)}
+          </section>
+        )}
+
+        <section>
           <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Sources</h3>
           <ul className="space-y-1.5">
             {concept.provenance.sources.map((source) => (
@@ -165,7 +168,7 @@ export default function NodeDetailPanel({
               </li>
             ))}
           </ul>
-        </section>}
+        </section>
       </div>
 
       <div className={`p-3.5 border-t flex justify-between text-[10px] ${isDark ? 'border-white/10' : 'border-black/10'}`}>
