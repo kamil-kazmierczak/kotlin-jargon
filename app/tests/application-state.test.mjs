@@ -35,6 +35,7 @@ test('the default state keeps the graph highlight while the concept panel is clo
       temporaryReveal: null
     },
     assessments: {},
+    groupAssessments: {},
     lessonContext: null
   });
 });
@@ -147,6 +148,7 @@ test('only explicit self-assessment changes learner-owned progress', () => {
   const afterPassiveEvents = passiveEvents.reduce(applicationStateReducer, initial);
 
   assert.deepEqual(afterPassiveEvents.assessments, {});
+  assert.deepEqual(afterPassiveEvents.groupAssessments, {});
 
   const assessed = applicationStateReducer(afterPassiveEvents, {
     type: 'concept-assessed',
@@ -157,6 +159,29 @@ test('only explicit self-assessment changes learner-owned progress', () => {
   assert.deepEqual(assessed.assessments, {
     'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
   });
+});
+
+test('curriculum-group readiness is explicit and independent from concept assessments', () => {
+  const initial = createApplicationState({
+    assessments: {
+      'nullable-types': { status: 'interview-ready', assessedAt: '2026-09-20' },
+      'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+    }
+  });
+
+  assert.deepEqual(initial.groupAssessments, {});
+
+  const assessed = applicationStateReducer(initial, {
+    type: 'group-assessed',
+    groupId: 'java-developer-foundations',
+    status: 'scenario-ready',
+    assessedAt: '2026-09-20'
+  });
+
+  assert.deepEqual(assessed.groupAssessments, {
+    'java-developer-foundations': { status: 'scenario-ready', assessedAt: '2026-09-20' }
+  });
+  assert.deepEqual(assessed.assessments, initial.assessments);
 });
 
 test('reassessment replaces status and date without keeping a history timeline', () => {
@@ -220,7 +245,8 @@ test('assessment filters are transient graph state and can be toggled', () => {
   ]);
   assert.deepEqual(createProgressExport(filtered), {
     version: PROGRESS_FORMAT_VERSION,
-    assessments: {}
+    assessments: {},
+    groupAssessments: {}
   });
 });
 
@@ -237,10 +263,11 @@ test('progress export contains only versioned durable assessment evidence', () =
   });
 
   assert.deepEqual(createProgressExport(state), {
-    version: 1,
+    version: 2,
     assessments: {
       'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
-    }
+    },
+    groupAssessments: {}
   });
   assert.equal(JSON.stringify(createProgressExport(state)).includes('camera'), false);
   assert.equal(JSON.stringify(createProgressExport(state)).includes('filters'), false);
@@ -248,26 +275,36 @@ test('progress export contains only versioned durable assessment evidence', () =
 
 test('progress import validates the entire document before returning replacement state', () => {
   const valid = JSON.stringify({
-    version: 1,
+    version: 2,
     assessments: {
       'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+    },
+    groupAssessments: {
+      'java-developer-foundations': { status: 'scenario-ready', assessedAt: '2026-09-20' }
     }
   });
 
-  assert.deepEqual(parseProgressImport(valid, ['platform-types', 'nullable-types']), {
-    'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+  assert.deepEqual(parseProgressImport(valid, ['platform-types', 'nullable-types'], ['java-developer-foundations']), {
+    assessments: {
+      'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+    },
+    groupAssessments: {
+      'java-developer-foundations': { status: 'scenario-ready', assessedAt: '2026-09-20' }
+    }
   });
 
   const invalidDocuments = [
     '{not json',
-    JSON.stringify({ version: 2, assessments: {} }),
-    JSON.stringify({ version: 1, assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } } }),
-    JSON.stringify({ version: 1, assessments: { 'platform-types': { status: 'mastered', assessedAt: '2026-09-20' } } }),
-    JSON.stringify({ version: 1, assessments: { 'platform-types': { status: 'can-explain', assessedAt: 'today' } } })
+    JSON.stringify({ version: 3, assessments: {}, groupAssessments: {} }),
+    JSON.stringify({ version: 1, assessments: {}, extra: true }),
+    JSON.stringify({ version: 2, assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } }, groupAssessments: {} }),
+    JSON.stringify({ version: 2, assessments: {}, groupAssessments: { unknown: { status: 'scenario-ready', assessedAt: '2026-09-20' } } }),
+    JSON.stringify({ version: 2, assessments: {}, groupAssessments: { 'java-developer-foundations': { status: 'can-explain', assessedAt: '2026-09-20' } } }),
+    JSON.stringify({ version: 2, assessments: { 'platform-types': { status: 'can-explain', assessedAt: 'today' } }, groupAssessments: {} })
   ];
 
   for (const document of invalidDocuments) {
-    assert.throws(() => parseProgressImport(document, ['platform-types', 'nullable-types']));
+    assert.throws(() => parseProgressImport(document, ['platform-types', 'nullable-types'], ['java-developer-foundations']));
   }
 });
 
@@ -278,10 +315,29 @@ test('browser storage migrates the assessment-only format without weakening impo
     }
   });
 
-  assert.deepEqual(parseStoredProgress(legacyStorage, ['platform-types']), {
-    'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+  assert.deepEqual(parseStoredProgress(legacyStorage, ['platform-types'], ['java-developer-foundations']), {
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    },
+    groupAssessments: {}
   });
-  assert.throws(() => parseProgressImport(legacyStorage, ['platform-types']), /unsupported data/i);
+  assert.throws(() => parseProgressImport(legacyStorage, ['platform-types'], ['java-developer-foundations']), /unsupported data/i);
+});
+
+test('version 1 progress imports migrate with untouched groups remaining not attempted', () => {
+  const versionOne = JSON.stringify({
+    version: 1,
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    }
+  });
+
+  assert.deepEqual(parseProgressImport(versionOne, ['platform-types'], ['java-developer-foundations']), {
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    },
+    groupAssessments: {}
+  });
 });
 
 test('valid import replaces assessments and reset deliberately clears them', () => {
@@ -294,13 +350,21 @@ test('valid import replaces assessments and reset deliberately clears them', () 
     type: 'progress-replaced',
     assessments: {
       'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    },
+    groupAssessments: {
+      'java-developer-foundations': { status: 'needs-review', assessedAt: '2026-09-20' }
     }
   });
 
   assert.deepEqual(imported.assessments, {
     'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
   });
-  assert.deepEqual(applicationStateReducer(imported, { type: 'progress-reset' }).assessments, {});
+  assert.deepEqual(imported.groupAssessments, {
+    'java-developer-foundations': { status: 'needs-review', assessedAt: '2026-09-20' }
+  });
+  const reset = applicationStateReducer(imported, { type: 'progress-reset' });
+  assert.deepEqual(reset.assessments, {});
+  assert.deepEqual(reset.groupAssessments, {});
 });
 
 test('progress filtering keeps every prerequisite visible without changing the graph', () => {

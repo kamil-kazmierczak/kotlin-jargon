@@ -1,4 +1,4 @@
-export const PROGRESS_FORMAT_VERSION = 1;
+export const PROGRESS_FORMAT_VERSION = 2;
 export const ASSESSMENT_DEFINITIONS = [
   { status: 'not-assessed', label: 'Not assessed', color: '#94a3b8', symbol: '○', durable: false },
   { status: 'needs-review', label: 'Needs review', color: '#f59e0b', symbol: '!', durable: true },
@@ -6,6 +6,14 @@ export const ASSESSMENT_DEFINITIONS = [
   { status: 'interview-ready', label: 'Interview-ready', color: '#8b5cf6', symbol: '◆', durable: true }
 ];
 export const DURABLE_ASSESSMENT_STATUSES = ASSESSMENT_DEFINITIONS
+  .filter(({ durable }) => durable)
+  .map(({ status }) => status);
+export const GROUP_ASSESSMENT_DEFINITIONS = [
+  { status: 'not-attempted', label: 'Not attempted', durable: false },
+  { status: 'needs-review', label: 'Needs review', durable: true },
+  { status: 'scenario-ready', label: 'Scenario-ready', durable: true }
+];
+export const DURABLE_GROUP_ASSESSMENT_STATUSES = GROUP_ASSESSMENT_DEFINITIONS
   .filter(({ durable }) => durable)
   .map(({ status }) => status);
 
@@ -34,12 +42,29 @@ const validateAssessment = (conceptId, assessment) => {
   if (!isIsoDate(assessment.assessedAt)) throw new Error(`Invalid assessment date for ${conceptId}.`);
 };
 
+const validateGroupAssessment = (groupId, assessment) => {
+  if (!isPlainObject(assessment)) throw new Error(`Invalid group assessment for ${groupId}.`);
+  const keys = Object.keys(assessment).sort();
+  if (keys.length !== 2 || keys[0] !== 'assessedAt' || keys[1] !== 'status') {
+    throw new Error(`Unsupported group assessment data for ${groupId}.`);
+  }
+  if (!DURABLE_GROUP_ASSESSMENT_STATUSES.includes(assessment.status)) {
+    throw new Error(`Invalid group assessment state for ${groupId}.`);
+  }
+  if (!isIsoDate(assessment.assessedAt)) throw new Error(`Invalid group assessment date for ${groupId}.`);
+};
+
+const copyAssessments = (assessments = {}) => Object.fromEntries(
+  Object.entries(assessments).map(([id, assessment]) => [id, {
+    status: assessment.status,
+    assessedAt: assessment.assessedAt
+  }])
+);
+
 export const createProgressExport = (state) => ({
   version: PROGRESS_FORMAT_VERSION,
-  assessments: Object.fromEntries(Object.entries(state.assessments || {}).map(([conceptId, assessment]) => [
-    conceptId,
-    { status: assessment.status, assessedAt: assessment.assessedAt }
-  ]))
+  assessments: copyAssessments(state.assessments),
+  groupAssessments: copyAssessments(state.groupAssessments)
 });
 
 const parseJson = (source) => {
@@ -50,36 +75,54 @@ const parseJson = (source) => {
   }
 };
 
-const validateProgress = (progress, knownConceptIds) => {
+const validateAssessmentMap = (items, knownIds, label, validateItem) => {
+  if (!isPlainObject(items)) throw new Error(`Progress ${label} must be an object.`);
+  const known = new Set(knownIds);
+  for (const [id, assessment] of Object.entries(items)) {
+    if (!known.has(id)) throw new Error(`Unknown ${label === 'assessments' ? 'concept' : 'group'}: ${id}.`);
+    validateItem(id, assessment);
+  }
+  return copyAssessments(items);
+};
+
+const migrateVersionOne = (progress) => {
+  const keys = Object.keys(progress).sort();
+  if (keys.length !== 2 || keys[0] !== 'assessments' || keys[1] !== 'version') {
+    throw new Error('Progress file contains unsupported data.');
+  }
+  return {
+    version: PROGRESS_FORMAT_VERSION,
+    assessments: progress.assessments,
+    groupAssessments: {}
+  };
+};
+
+const validateProgress = (source, knownConceptIds, knownGroupIds) => {
+  const progress = source?.version === 1 ? migrateVersionOne(source) : source;
   if (!isPlainObject(progress)) throw new Error('Progress file must contain an object.');
   const rootKeys = Object.keys(progress).sort();
-  if (rootKeys.length !== 2 || rootKeys[0] !== 'assessments' || rootKeys[1] !== 'version') {
+  if (rootKeys.length !== 3 || rootKeys[0] !== 'assessments' || rootKeys[1] !== 'groupAssessments' || rootKeys[2] !== 'version') {
     throw new Error('Progress file contains unsupported data.');
   }
   if (progress.version !== PROGRESS_FORMAT_VERSION) {
     throw new Error(`Unsupported progress version: ${String(progress.version)}.`);
   }
-  if (!isPlainObject(progress.assessments)) throw new Error('Progress assessments must be an object.');
-
-  const knownConcepts = new Set(knownConceptIds);
-  for (const [conceptId, assessment] of Object.entries(progress.assessments)) {
-    if (!knownConcepts.has(conceptId)) throw new Error(`Unknown concept: ${conceptId}.`);
-    validateAssessment(conceptId, assessment);
-  }
-
-  return structuredClone(progress.assessments);
+  return {
+    assessments: validateAssessmentMap(progress.assessments, knownConceptIds, 'assessments', validateAssessment),
+    groupAssessments: validateAssessmentMap(progress.groupAssessments, knownGroupIds, 'group assessments', validateGroupAssessment)
+  };
 };
 
-export const parseProgressImport = (source, knownConceptIds) => (
-  validateProgress(parseJson(source), knownConceptIds)
+export const parseProgressImport = (source, knownConceptIds, knownGroupIds = []) => (
+  validateProgress(parseJson(source), knownConceptIds, knownGroupIds)
 );
 
-export const parseStoredProgress = (source, knownConceptIds) => {
+export const parseStoredProgress = (source, knownConceptIds, knownGroupIds = []) => {
   const stored = parseJson(source);
   const isLegacyAssessmentEnvelope = isPlainObject(stored) &&
     Object.keys(stored).length === 1 &&
     Object.hasOwn(stored, 'assessments');
   return validateProgress(isLegacyAssessmentEnvelope
-    ? { version: PROGRESS_FORMAT_VERSION, assessments: stored.assessments }
-    : stored, knownConceptIds);
+    ? { version: 1, assessments: stored.assessments }
+    : stored, knownConceptIds, knownGroupIds);
 };

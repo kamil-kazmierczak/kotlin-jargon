@@ -4,6 +4,7 @@ import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import ProgressControls from './components/ProgressControls';
+import ScenarioPanel from './components/ScenarioPanel';
 import { soundEffects } from './utils/audio';
 import {
   Search,
@@ -25,13 +26,15 @@ import { createProgressExport, parseProgressImport, parseStoredProgress } from '
 
 const PROGRESS_STORAGE_KEY = 'kotlin-concepts-progress';
 
-const loadStoredProgress = (knownConceptIds) => {
-  if (typeof window === 'undefined') return {};
+const loadStoredProgress = (knownConceptIds, knownGroupIds) => {
+  if (typeof window === 'undefined') return { assessments: {}, groupAssessments: {} };
   try {
     const stored = localStorage.getItem(PROGRESS_STORAGE_KEY);
-    return stored ? parseStoredProgress(stored, knownConceptIds) : {};
+    return stored
+      ? parseStoredProgress(stored, knownConceptIds, knownGroupIds)
+      : { assessments: {}, groupAssessments: {} };
   } catch {
-    return {};
+    return { assessments: {}, groupAssessments: {} };
   }
 };
 
@@ -45,12 +48,16 @@ export default function App() {
       const hash = typeof window === 'undefined'
         ? ''
         : window.location.hash.replace(/^#/, '');
+      const progress = loadStoredProgress(
+        concepts.map(({ id }) => id),
+        contentData.studyPaths.map(({ id }) => id)
+      );
       return createApplicationState({
         selection: {
           conceptId: DEFAULT_CONCEPT_ID,
           panelOpen: false
         },
-        assessments: loadStoredProgress(concepts.map(({ id }) => id))
+        ...progress
       });
     }
   );
@@ -63,6 +70,7 @@ export default function App() {
 
   // Command palette search modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [openScenarioId, setOpenScenarioId] = useState(null);
   const [connectionPreview, setConnectionPreview] = useState(null);
   
   // Customization toggles
@@ -92,7 +100,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(createProgressExport(applicationState)));
-  }, [applicationState.assessments]);
+  }, [applicationState.assessments, applicationState.groupAssessments]);
 
   // Handle URL hash navigation on mount and on hash changes
   useEffect(() => {
@@ -163,8 +171,12 @@ export default function App() {
   }, [applicationState]);
 
   const handleImportProgress = useCallback((json) => {
-    const assessments = parseProgressImport(json, concepts.map(({ id }) => id));
-    dispatch({ type: 'progress-replaced', assessments });
+    const progress = parseProgressImport(
+      json,
+      concepts.map(({ id }) => id),
+      contentData.studyPaths.map(({ id }) => id)
+    );
+    dispatch({ type: 'progress-replaced', ...progress });
   }, [concepts]);
 
   // Pick a random concept
@@ -196,7 +208,9 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (isSearchOpen) {
+        if (openScenarioId) {
+          setOpenScenarioId(null);
+        } else if (isSearchOpen) {
           handleCloseSearch();
         } else if (connectionPreview) {
           setConnectionPreview(null);
@@ -207,7 +221,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen, connectionPreview]);
+  }, [handleClosePanel, handleCloseSearch, isSearchOpen, isPanelOpen, connectionPreview, openScenarioId]);
 
   const activeConcept = (selectedNodeId && isPanelOpen) ? allConceptsMap[selectedNodeId] : null;
 
@@ -369,8 +383,10 @@ export default function App() {
           studyPathOverlay={graphView.studyPathOverlay}
           studyPaths={contentData.studyPaths}
           assessments={applicationState.assessments}
+          groupAssessments={applicationState.groupAssessments}
           onToggleFilter={(filter, value) => dispatch({ type: 'filter-toggled', filter, value })}
           onToggleStudyPath={(pathId) => dispatch({ type: 'study-path-toggled', pathId })}
+          onOpenScenario={setOpenScenarioId}
           onReturnToPreviousView={() => dispatch({ type: 'temporary-reveal-returned' })}
           useCategoryColors={useCategoryColors}
           soundEnabled={soundEnabled}
@@ -402,6 +418,22 @@ export default function App() {
           onAssess={(status) => dispatch({
             type: 'concept-assessed',
             conceptId: activeConcept.id,
+            status,
+            assessedAt: formatLocalAssessmentDate()
+          })}
+        />
+      )}
+
+      {openScenarioId && contentData.studyPaths.find(({ id }) => id === openScenarioId)?.scenario && (
+        <ScenarioPanel
+          key={openScenarioId}
+          group={contentData.studyPaths.find(({ id }) => id === openScenarioId)}
+          assessment={applicationState.groupAssessments[openScenarioId]}
+          isDark={isDark}
+          onClose={() => setOpenScenarioId(null)}
+          onAssess={(status) => dispatch({
+            type: 'group-assessed',
+            groupId: openScenarioId,
             status,
             assessedAt: formatLocalAssessmentDate()
           })}

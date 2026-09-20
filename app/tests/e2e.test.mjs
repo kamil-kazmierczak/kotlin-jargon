@@ -177,8 +177,9 @@ server.listen(PORT, '127.0.0.1', async () => {
     await practice.getByRole('button', { name: 'Can explain' }).click();
     await practice.getByText(/^Assessed .*Can explain$/).waitFor({ state: 'visible' });
     const storedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
-    assert.deepEqual(Object.keys(storedProgress).sort(), ['assessments', 'version']);
-    assert.equal(storedProgress.version, 1);
+    assert.deepEqual(Object.keys(storedProgress).sort(), ['assessments', 'groupAssessments', 'version']);
+    assert.equal(storedProgress.version, 2);
+    assert.deepEqual(storedProgress.groupAssessments, {});
     assert.equal(storedProgress.assessments['platform-types'].status, 'can-explain');
     assert.equal(JSON.stringify(storedProgress).includes('normalize the Java boundary'), false);
 
@@ -212,6 +213,47 @@ server.listen(PORT, '127.0.0.1', async () => {
     assert.equal(await page.getByRole('button', { name: 'Path: Java developer foundations', exact: true }).getAttribute('aria-pressed'), 'true');
     console.log('✓ Assessment filtering focuses the graph while retaining prerequisites and the curated path.');
 
+    console.log('Running acceptance: staged curriculum-group scenario and independent readiness...');
+    const groupSummary = page.getByRole('region', { name: 'Java developer foundations group summary' });
+    await groupSummary.getByText(/Concepts: 2 Not assessed · 1 Needs review/).waitFor({ state: 'visible' });
+    await groupSummary.getByText('Scenario: Not attempted').waitFor({ state: 'visible' });
+    await groupSummary.getByRole('button', { name: 'Work through scenario' }).click();
+    const scenario = page.getByRole('dialog', { name: 'Stabilize a Java customer boundary' });
+    await scenario.getByRole('heading', { name: 'Stabilize a Java customer boundary' }).waitFor({ state: 'visible' });
+    assert.equal(await scenario.getByLabel('Stage 1: Prediction').count(), 1);
+    assert.equal(await scenario.getByLabel('Stage 2: Diagnosis').count(), 0);
+    assert.equal(await scenario.getByRole('heading', { name: 'Final debrief' }).count(), 0);
+    assert.equal(await scenario.getByRole('button', { name: 'Reveal stage 1 feedback' }).isDisabled(), true);
+
+    await scenario.getByRole('textbox', { name: 'Stage 1 scratch work' }).fill('The platform type can compile as non-null and then fail.');
+    await scenario.getByRole('button', { name: 'Reveal stage 1 feedback' }).click();
+    await scenario.getByText(/enters Kotlin as the platform type/).waitFor({ state: 'visible' });
+    await scenario.getByText(/null means the customer deliberately/).waitFor({ state: 'visible' });
+    assert.equal(await scenario.getByLabel('Stage 2: Diagnosis').count(), 1);
+    assert.equal(await scenario.getByLabel('Stage 3: Design choice').count(), 0);
+
+    await scenario.getByRole('textbox', { name: 'Stage 2 scratch work' }).fill('Normalize the Java result to String? at the boundary.');
+    await scenario.getByRole('button', { name: 'Reveal stage 2 feedback' }).click();
+    assert.equal(await scenario.getByLabel('Stage 3: Design choice').count(), 1);
+    await scenario.getByRole('textbox', { name: 'Stage 3 scratch work' }).fill('Use a fallback because null is valid domain data.');
+    await scenario.getByRole('button', { name: 'Reveal stage 3 feedback' }).click();
+
+    const debrief = scenario.getByRole('region', { name: 'Final debrief' });
+    await debrief.getByText(/Platform types explain why Kotlin initially trusts/).waitFor({ state: 'visible' });
+    await debrief.getByText('Group-level reasoning rubric').waitFor({ state: 'visible' });
+    await debrief.getByRole('button', { name: 'Scenario-ready' }).click();
+    await debrief.getByText(/^Assessed .*Scenario-ready$/).waitFor({ state: 'visible' });
+    const scenarioProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
+    assert.equal(scenarioProgress.groupAssessments['java-developer-foundations'].status, 'scenario-ready');
+    assert.equal(JSON.stringify(scenarioProgress).includes('platform type can compile'), false);
+    assert.equal(JSON.stringify(scenarioProgress).includes('revealedCount'), false);
+
+    await scenario.getByRole('button', { name: 'Close scenario' }).click();
+    await groupSummary.getByText('Scenario: Scenario-ready').waitFor({ state: 'visible' });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByRole('region', { name: 'Java developer foundations group summary' }).getByText('Scenario: Scenario-ready').waitFor({ state: 'visible' });
+    console.log('✓ Stages disclose one at a time, debrief connects concepts, scratch stays ephemeral, and group readiness persists independently.');
+
     console.log('Running acceptance: progress export, import validation, replacement, and reset...');
     await page.getByRole('button', { name: 'Manage progress' }).click();
     const progressDialog = page.getByRole('dialog', { name: 'Your learning progress' });
@@ -219,17 +261,19 @@ server.listen(PORT, '127.0.0.1', async () => {
     await progressDialog.getByRole('button', { name: 'Export progress JSON' }).click();
     const download = await downloadPromise;
     const exportedProgress = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-    assert.deepEqual(Object.keys(exportedProgress).sort(), ['assessments', 'version']);
-    assert.equal(exportedProgress.version, 1);
+    assert.deepEqual(Object.keys(exportedProgress).sort(), ['assessments', 'groupAssessments', 'version']);
+    assert.equal(exportedProgress.version, 2);
     assert.equal(exportedProgress.assessments['platform-types'].status, 'needs-review');
+    assert.equal(exportedProgress.groupAssessments['java-developer-foundations'].status, 'scenario-ready');
 
     const importInput = progressDialog.getByLabel('Progress JSON file');
     await importInput.setInputFiles({
       name: 'invalid-progress.json',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
-        version: 1,
-        assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } }
+        version: 2,
+        assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } },
+        groupAssessments: {}
       }))
     });
     await progressDialog.getByText(/^Import failed: Unknown concept: unknown\.$/).waitFor({ state: 'visible' });
@@ -240,21 +284,27 @@ server.listen(PORT, '127.0.0.1', async () => {
       name: 'valid-progress.json',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
-        version: 1,
-        assessments: { 'nullable-types': { status: 'can-explain', assessedAt: '2026-09-20' } }
+        version: 2,
+        assessments: { 'nullable-types': { status: 'can-explain', assessedAt: '2026-09-20' } },
+        groupAssessments: { 'java-developer-foundations': { status: 'needs-review', assessedAt: '2026-09-20' } }
       }))
     });
     await progressDialog.getByText('Progress restored.').waitFor({ state: 'visible' });
     await page.waitForFunction(() => {
       const progress = JSON.parse(localStorage.getItem('kotlin-concepts-progress'));
-      return progress.assessments['nullable-types']?.status === 'can-explain' && !progress.assessments['platform-types'];
+      return progress.assessments['nullable-types']?.status === 'can-explain' &&
+        !progress.assessments['platform-types'] &&
+        progress.groupAssessments['java-developer-foundations']?.status === 'needs-review';
     });
 
     await progressDialog.getByRole('button', { name: 'Reset all progress' }).click();
     const resetDialog = progressDialog.getByRole('alertdialog', { name: 'Confirm reset progress' });
     await resetDialog.getByRole('button', { name: 'Yes, reset all progress' }).click();
     await progressDialog.getByText('Progress reset.').waitFor({ state: 'visible' });
-    await page.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem('kotlin-concepts-progress')).assessments).length === 0);
+    await page.waitForFunction(() => {
+      const progress = JSON.parse(localStorage.getItem('kotlin-concepts-progress'));
+      return Object.keys(progress.assessments).length === 0 && Object.keys(progress.groupAssessments).length === 0;
+    });
     console.log('✓ Export is versioned, invalid imports preserve data, valid imports replace it, and reset requires confirmation.');
 
   } catch (err) {

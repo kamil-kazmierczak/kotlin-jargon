@@ -101,6 +101,20 @@ How would you handle an unannotated Java return type in Kotlin?
 - What changes when the Java API adds nullability annotations?
 `;
 
+const stagedScenario = {
+  title: 'Review a Java boundary',
+  context: 'A Kotlin service consumes an unannotated Java API.',
+  stages: [
+    { id: 'predict', kind: 'Prediction', prompt: 'What happens?', feedback: 'It is a platform type.', nextConstraint: 'Null is valid.' },
+    { id: 'design', kind: 'Design choice', prompt: 'What policy?', feedback: 'Model null explicitly.', nextConstraint: 'Explain the trade-off.' }
+  ],
+  debrief: {
+    connections: 'Boundary uncertainty becomes an explicit nullable type.',
+    tradeOffs: 'Safety requires deliberate handling.',
+    rubric: ['Names the platform type.', 'Explains the nullable policy.']
+  }
+};
+
 test('parses structured Markdown into metadata and named lesson sections', () => {
   const concept = parseConceptSource('nullable-types.md', compactConcept);
 
@@ -113,6 +127,32 @@ test('parses structured Markdown into metadata and named lesson sections', () =>
     url: 'https://kotlinlang.org/docs/null-safety.html'
   }]);
   assert.equal(concept.codeBlocks[0].verification, 'fragment');
+});
+
+test('preserves a validated staged scenario on its curriculum group', () => {
+  const scenarioManifest = structuredClone(manifest);
+  scenarioManifest.studyPaths[0].scenario = stagedScenario;
+
+  const model = buildContentModel({
+    manifest: scenarioManifest,
+    conceptSources: [{ filePath: 'nullable-types.md', source: compactConcept }]
+  });
+
+  assert.deepEqual(model.studyPaths[0].scenario, stagedScenario);
+});
+
+test('rejects a scenario that could expose a stage without focused feedback', () => {
+  const scenarioManifest = structuredClone(manifest);
+  scenarioManifest.studyPaths[0].scenario = structuredClone(stagedScenario);
+  delete scenarioManifest.studyPaths[0].scenario.stages[1].feedback;
+
+  assert.throws(
+    () => buildContentModel({
+      manifest: scenarioManifest,
+      conceptSources: [{ filePath: 'nullable-types.md', source: compactConcept }]
+    }),
+    (error) => error instanceof ContentValidationError && error.message.includes('stage 2.feedback is required')
+  );
 });
 
 test('preserves explicit example verification metadata and rejects unclassified code', () => {

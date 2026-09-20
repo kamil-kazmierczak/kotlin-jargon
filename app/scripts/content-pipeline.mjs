@@ -292,6 +292,44 @@ function validateGraph(concepts, manifest, issues) {
       }
       seen.add(conceptId);
     }
+
+    if (studyPath.scenario !== undefined) {
+      const { scenario } = studyPath;
+      if (!scenario || typeof scenario !== 'object' || Array.isArray(scenario)) {
+        issues.push(`curriculum.json: study path "${studyPath.id}" scenario must be an object`);
+        continue;
+      }
+      for (const field of ['title', 'context']) {
+        if (typeof scenario[field] !== 'string' || !scenario[field].trim()) {
+          issues.push(`curriculum.json: study path "${studyPath.id}" scenario.${field} is required`);
+        }
+      }
+      if (!Array.isArray(scenario.stages) || scenario.stages.length < 2) {
+        issues.push(`curriculum.json: study path "${studyPath.id}" scenario requires at least two stages`);
+      } else {
+        const stageIds = new Set();
+        scenario.stages.forEach((stage, index) => {
+          for (const field of ['id', 'kind', 'prompt', 'feedback', 'nextConstraint']) {
+            if (typeof stage?.[field] !== 'string' || !stage[field].trim()) {
+              issues.push(`curriculum.json: study path "${studyPath.id}" scenario stage ${index + 1}.${field} is required`);
+            }
+          }
+          if (stageIds.has(stage?.id)) {
+            issues.push(`curriculum.json: study path "${studyPath.id}" scenario repeats stage "${stage.id}"`);
+          }
+          stageIds.add(stage?.id);
+        });
+      }
+      for (const field of ['connections', 'tradeOffs']) {
+        if (typeof scenario.debrief?.[field] !== 'string' || !scenario.debrief[field].trim()) {
+          issues.push(`curriculum.json: study path "${studyPath.id}" scenario.debrief.${field} is required`);
+        }
+      }
+      if (!Array.isArray(scenario.debrief?.rubric) || scenario.debrief.rubric.length === 0 ||
+          scenario.debrief.rubric.some((item) => typeof item !== 'string' || !item.trim())) {
+        issues.push(`curriculum.json: study path "${studyPath.id}" scenario.debrief.rubric requires text items`);
+      }
+    }
   }
 
   const prerequisites = new Map(concepts.map((concept) => [

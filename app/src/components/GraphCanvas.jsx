@@ -2,10 +2,13 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { soundEffects } from '../utils/audio';
 import { ASSESSMENT_FILTER_STATUSES } from '../state/applicationState.mjs';
 import { getProgressVisibleIds } from '../state/graphVisibility.mjs';
-import { ASSESSMENT_DEFINITIONS } from '../state/progress.mjs';
+import { ASSESSMENT_DEFINITIONS, GROUP_ASSESSMENT_DEFINITIONS } from '../state/progress.mjs';
 
 const ASSESSMENT_MARKERS = Object.fromEntries(
   ASSESSMENT_DEFINITIONS.map(({ status, label, color, symbol }) => [status, { label, color, symbol }])
+);
+const GROUP_ASSESSMENT_LABELS = Object.fromEntries(
+  GROUP_ASSESSMENT_DEFINITIONS.map(({ status, label }) => [status, label])
 );
 
 const getAssessmentMarker = (assessments, conceptId) => (
@@ -40,8 +43,10 @@ export default function GraphCanvas({
   studyPathOverlay,
   studyPaths = [],
   assessments = {},
+  groupAssessments = {},
   onToggleFilter,
   onToggleStudyPath,
+  onOpenScenario,
   onReturnToPreviousView,
   useCategoryColors,
   soundEnabled,
@@ -843,6 +848,24 @@ export default function GraphCanvas({
         <div className="flex flex-wrap gap-1">
           {studyPaths.map((path) => <button key={path.id} onClick={() => onToggleStudyPath?.(path.id)} aria-pressed={studyPathOverlay?.pathId === path.id} className={`px-1.5 py-1 border ${studyPathOverlay?.pathId === path.id ? 'border-amber-500 text-amber-600' : ''}`}>Path: {path.name}</button>)}
         </div>
+        {studyPaths.filter(({ scenario }) => scenario).map((path) => {
+          const counts = ASSESSMENT_DEFINITIONS.map(({ status, label }) => ({
+            status,
+            label,
+            count: path.conceptIds.filter((conceptId) => (assessments[conceptId]?.status || 'not-assessed') === status).length
+          })).filter(({ count }) => count > 0);
+          const groupState = GROUP_ASSESSMENT_LABELS[groupAssessments[path.id]?.status || 'not-attempted'];
+          return (
+            <section key={`${path.id}-summary`} aria-label={`${path.name} group summary`} className="mt-2 border border-current/15 p-2">
+              <p className="font-semibold">{path.name}</p>
+              <p className="mt-1 opacity-70">Concepts: {counts.map(({ label, count }) => `${count} ${label}`).join(' · ')}</p>
+              <p className="mt-1">Scenario: {groupState}</p>
+              <button type="button" onClick={() => onOpenScenario?.(path.id)} className="mt-2 border border-current/25 px-2 py-1 font-semibold">
+                Work through scenario
+              </button>
+            </section>
+          );
+        })}
         {temporaryReveal && <button onClick={onReturnToPreviousView} className="mt-2 underline">Return to previous view</button>}
         <p className="mt-2 opacity-60">Solid arrows: prerequisites · thin lines: related · amber dash: study path</p>
       </div>

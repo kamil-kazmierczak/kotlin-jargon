@@ -1,4 +1,9 @@
-import { ASSESSMENT_DEFINITIONS, DURABLE_ASSESSMENT_STATUSES, isIsoDate } from './progress.mjs';
+import {
+  ASSESSMENT_DEFINITIONS,
+  DURABLE_ASSESSMENT_STATUSES,
+  DURABLE_GROUP_ASSESSMENT_STATUSES,
+  isIsoDate
+} from './progress.mjs';
 
 export const DEFAULT_CONCEPT_ID = 'nullable-types';
 export const ASSESSMENT_OPTIONS = ASSESSMENT_DEFINITIONS
@@ -50,18 +55,21 @@ function captureLessonEntry(state) {
   };
 }
 
-const restoreAssessments = (assessments = {}) => {
+const restoreAssessmentMap = (assessments, allowedStatuses) => {
   if (!assessments || typeof assessments !== 'object' || Array.isArray(assessments)) return {};
 
   return Object.fromEntries(Object.entries(assessments).filter(([conceptId, assessment]) => {
     if (typeof conceptId !== 'string' || !assessment || typeof assessment !== 'object') return false;
-    if (!ASSESSMENT_STATUSES.includes(assessment.status)) return false;
+    if (!allowedStatuses.includes(assessment.status)) return false;
     return isIsoDate(assessment.assessedAt);
   }).map(([conceptId, assessment]) => [conceptId, {
     status: assessment.status,
     assessedAt: assessment.assessedAt
   }]));
 };
+
+const restoreAssessments = (assessments = {}) => restoreAssessmentMap(assessments, ASSESSMENT_STATUSES);
+const restoreGroupAssessments = (assessments = {}) => restoreAssessmentMap(assessments, DURABLE_GROUP_ASSESSMENT_STATUSES);
 
 export function createApplicationState(initialState = {}) {
   const selection = initialState.selection || {};
@@ -81,6 +89,7 @@ export function createApplicationState(initialState = {}) {
       temporaryReveal: cloneSerializable(graphView.temporaryReveal)
     },
     assessments: restoreAssessments(initialState.assessments),
+    groupAssessments: restoreGroupAssessments(initialState.groupAssessments),
     lessonContext: null
   };
 }
@@ -141,6 +150,7 @@ export function applicationStateReducer(state, event) {
         return {
           ...state.lessonContext.entry,
           assessments: state.assessments,
+          groupAssessments: state.groupAssessments,
           lessonContext: null
         };
       }
@@ -223,15 +233,28 @@ export function applicationStateReducer(state, event) {
           }
         }
       };
+    case 'group-assessed':
+      if (typeof event.groupId !== 'string' ||
+          !DURABLE_GROUP_ASSESSMENT_STATUSES.includes(event.status) ||
+          !isIsoDate(event.assessedAt)) return state;
+      return {
+        ...state,
+        groupAssessments: {
+          ...state.groupAssessments,
+          [event.groupId]: { status: event.status, assessedAt: event.assessedAt }
+        }
+      };
     case 'progress-replaced':
       return {
         ...state,
-        assessments: restoreAssessments(event.assessments)
+        assessments: restoreAssessments(event.assessments),
+        groupAssessments: restoreGroupAssessments(event.groupAssessments)
       };
     case 'progress-reset':
       return {
         ...state,
-        assessments: {}
+        assessments: {},
+        groupAssessments: {}
       };
     default:
       return state;

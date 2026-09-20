@@ -55,17 +55,23 @@ Learning progress stays in browser storage. The Progress menu can export or impo
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "assessments": {
     "platform-types": {
       "status": "can-explain",
+      "assessedAt": "2026-09-20"
+    }
+  },
+  "groupAssessments": {
+    "java-developer-foundations": {
+      "status": "scenario-ready",
       "assessedAt": "2026-09-20"
     }
   }
 }
 ```
 
-Supported assessment states are `needs-review`, `can-explain`, and `interview-ready`. Imports replace existing assessments only after the complete file passes validation. Selection, scratch answers, reveal state, rubric details, assessment history, filters, study paths, theme, and graph camera are never exported as progress.
+Concept assessment states are `needs-review`, `can-explain`, and `interview-ready`. Curriculum-group assessment states are independently set to `needs-review` or `scenario-ready`; they are never calculated from concept assessments. Imports replace existing progress only after the complete file passes validation, and version 1 exports migrate with no group assessments. Selection, scratch answers, stage reveal state, rubric details, assessment history, filters, study paths, theme, and graph camera are never exported as progress.
 
 ## License
 
