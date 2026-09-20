@@ -354,18 +354,20 @@ test('rejects production lesson links that resolve only in preview mode', () => 
 });
 
 test('rejects malformed internal concept anchors instead of ignoring them', () => {
-  const malformedLink = compactConcept.replace(
-    'This concept is the foundation for safe Java boundaries.',
-    'Continue with [missing concept](#Missing_concept).'
-  );
+  for (const target of ['Missing_concept', '']) {
+    const malformedLink = compactConcept.replace(
+      'This concept is the foundation for safe Java boundaries.',
+      `Continue with [missing concept](#${target}).`
+    );
 
-  assert.throws(
-    () => buildContentModel({
-      manifest,
-      conceptSources: [{ filePath: 'nullable-types.md', source: malformedLink }]
-    }),
-    (error) => error instanceof ContentValidationError && error.message.includes('internal link target "#Missing_concept"')
-  );
+    assert.throws(
+      () => buildContentModel({
+        manifest,
+        conceptSources: [{ filePath: 'nullable-types.md', source: malformedLink }]
+      }),
+      (error) => error instanceof ContentValidationError && error.message.includes(`internal link target "#${target}"`)
+    );
+  }
 });
 
 test('rejects duplicate permanent concept IDs', () => {

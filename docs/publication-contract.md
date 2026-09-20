@@ -17,9 +17,10 @@ Automation and AI-authored changes must stop at `review-ready`. A human reviewer
 concept to `verified` only after recording their trusted reviewer ID, date, confirming commit, and
 all four review confirmations: pedagogical clarity, authoritative support, interview realism,
 and accurate guarantee-versus-implementation wording. Production generation verifies that the
-commit is an ancestor, was authored by the reviewer's registered Git email, contains the concept,
-and matches its authored content. Later AI edits therefore invalidate the attestation until a human
-reviews and commits the new content.
+commit is an ancestor, was authored by the reviewer's registered Git email, and contains the exact
+verified state, reviewer record, four confirmations, and authored content. Later AI edits therefore
+invalidate the attestation until a human reviews and commits the new record. The later reference-only
+commit completes this two-commit handshake without permitting self-attestation.
 
 Production generation includes only `verified` concepts. Drafts and review-ready concepts can be
 inspected with the explicitly separate `npm --prefix app run generate:preview` command, which

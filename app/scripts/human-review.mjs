@@ -2,13 +2,13 @@ import { execFileSync } from 'node:child_process';
 
 import { ContentValidationError, parseConceptSource } from './content-pipeline.mjs';
 
-const REVIEW_METADATA_PATTERN = /^(publicationHistory|reviewerKind|reviewedBy|reviewedAt|reviewReference|reviewPedagogicalClarity|reviewAuthoritativeSupport|reviewInterviewRealism|reviewGuaranteeWording):/;
+const REVIEW_REFERENCE_PATTERN = /^reviewReference:/;
 
 function reviewedContent(source) {
   return source
     .replace(/\r\n/g, '\n')
     .split('\n')
-    .filter((line) => !REVIEW_METADATA_PATTERN.test(line))
+    .filter((line) => !REVIEW_REFERENCE_PATTERN.test(line))
     .join('\n')
     .trim();
 }
@@ -46,14 +46,20 @@ export function verifyHumanReviews({ manifest, conceptSources }, { repositoryDir
         stdio: 'ignore'
       });
       const authorEmail = git(repositoryDirectory, ['show', '-s', '--format=%ae', commit]);
-      const authoredAt = git(repositoryDirectory, ['show', '-s', '--format=%as', commit]);
       const reviewedSource = git(repositoryDirectory, ['show', `${commit}:${filePath}`]);
+      const reviewedMetadata = parseConceptSource(filePath, reviewedSource).metadata;
 
       if (!(reviewer.gitEmails || []).includes(authorEmail)) {
         issues.push(`${filePath}: review commit ${commit} was not authored by trusted reviewer "${reviewer.id}"`);
       }
-      if (metadata.reviewedAt !== authoredAt) {
-        issues.push(`${filePath}: reviewedAt must match review commit ${commit} author date ${authoredAt}`);
+      if (reviewedMetadata.publicationStatus !== 'verified' ||
+          reviewedMetadata.reviewerKind !== 'human' ||
+          reviewedMetadata.reviewedBy !== metadata.reviewedBy ||
+          reviewedMetadata.reviewPedagogicalClarity !== true ||
+          reviewedMetadata.reviewAuthoritativeSupport !== true ||
+          reviewedMetadata.reviewInterviewRealism !== true ||
+          reviewedMetadata.reviewGuaranteeWording !== true) {
+        issues.push(`${filePath}: review commit ${commit} must contain the verified state and every human review confirmation`);
       }
       if (reviewedContent(source) !== reviewedContent(reviewedSource)) {
         issues.push(`${filePath}: authored content differs from human-reviewed commit ${commit}`);

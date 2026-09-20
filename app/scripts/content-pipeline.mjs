@@ -363,7 +363,7 @@ function validateGraph(concepts, manifest, issues) {
     }
 
     for (const content of Object.values(sections)) {
-      for (const match of content.matchAll(/\]\(#([^)]+)\)/g)) {
+      for (const match of content.matchAll(/\]\(#([^)]*)\)/g)) {
         const targetId = match[1];
         if (!ID_PATTERN.test(targetId)) {
           issues.push(`${filePath}: internal link target "#${targetId}" must use a lowercase kebab-case concept ID`);

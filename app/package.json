@@ -8,7 +8,7 @@
     "build": "node scripts/generate-content.mjs && vite build",
     "preview": "vite preview",
     "test": "npm run test:content && npm run test:state && npm run test:e2e",
-    "test:content": "node --test tests/content-pipeline.test.mjs",
+    "test:content": "node --test tests/content-pipeline.test.mjs tests/human-review.test.mjs",
     "test:state": "node --test tests/application-state.test.mjs",
     "test:e2e": "node tests/e2e.test.mjs",
     "verify": "npm run verify:baseline && npm run verify:reviews && npm run verify:generation && npm run build && npm test",
