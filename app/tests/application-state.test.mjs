@@ -2,12 +2,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  ASSESSMENT_FILTER_STATUSES,
   applicationStateReducer,
   captureApplicationState,
   createApplicationState,
   formatLocalAssessmentDate,
   restoreApplicationState
 } from '../src/state/applicationState.mjs';
+import {
+  createProgressExport,
+  parseProgressImport,
+  parseStoredProgress,
+  PROGRESS_FORMAT_VERSION
+} from '../src/state/progress.mjs';
+import { getProgressVisibleIds } from '../src/state/graphVisibility.mjs';
 
 test('the default state keeps the graph highlight while the concept panel is closed', () => {
   assert.deepEqual(createApplicationState(), {
@@ -20,7 +28,8 @@ test('the default state keeps the graph highlight while the concept panel is clo
       filters: {
         query: '',
         categoryIds: [],
-        depths: ['core']
+        depths: ['core'],
+        assessmentStatuses: []
       },
       studyPathOverlay: null,
       temporaryReveal: null
@@ -192,4 +201,126 @@ test('assessment dates use the learner local calendar date', () => {
   };
 
   assert.equal(formatLocalAssessmentDate(learnerLocalTime), '2026-09-20');
+});
+
+test('assessment filters are transient graph state and can be toggled', () => {
+  const initial = createApplicationState();
+  const filtered = applicationStateReducer(initial, {
+    type: 'filter-toggled',
+    filter: 'assessment',
+    value: 'not-assessed'
+  });
+
+  assert.deepEqual(filtered.graphView.filters.assessmentStatuses, ['not-assessed']);
+  assert.deepEqual(ASSESSMENT_FILTER_STATUSES, [
+    'not-assessed',
+    'needs-review',
+    'can-explain',
+    'interview-ready'
+  ]);
+  assert.deepEqual(createProgressExport(filtered), {
+    version: PROGRESS_FORMAT_VERSION,
+    assessments: {}
+  });
+});
+
+test('progress export contains only versioned durable assessment evidence', () => {
+  const state = createApplicationState({
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    },
+    graphView: {
+      camera: { x: 1, y: 2, scale: 1.2 },
+      filters: { query: 'platform', assessmentStatuses: ['can-explain'] },
+      temporaryReveal: { conceptId: 'platform-types' }
+    }
+  });
+
+  assert.deepEqual(createProgressExport(state), {
+    version: 1,
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    }
+  });
+  assert.equal(JSON.stringify(createProgressExport(state)).includes('camera'), false);
+  assert.equal(JSON.stringify(createProgressExport(state)).includes('filters'), false);
+});
+
+test('progress import validates the entire document before returning replacement state', () => {
+  const valid = JSON.stringify({
+    version: 1,
+    assessments: {
+      'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+    }
+  });
+
+  assert.deepEqual(parseProgressImport(valid, ['platform-types', 'nullable-types']), {
+    'platform-types': { status: 'interview-ready', assessedAt: '2026-09-20' }
+  });
+
+  const invalidDocuments = [
+    '{not json',
+    JSON.stringify({ version: 2, assessments: {} }),
+    JSON.stringify({ version: 1, assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } } }),
+    JSON.stringify({ version: 1, assessments: { 'platform-types': { status: 'mastered', assessedAt: '2026-09-20' } } }),
+    JSON.stringify({ version: 1, assessments: { 'platform-types': { status: 'can-explain', assessedAt: 'today' } } })
+  ];
+
+  for (const document of invalidDocuments) {
+    assert.throws(() => parseProgressImport(document, ['platform-types', 'nullable-types']));
+  }
+});
+
+test('browser storage migrates the assessment-only format without weakening import validation', () => {
+  const legacyStorage = JSON.stringify({
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    }
+  });
+
+  assert.deepEqual(parseStoredProgress(legacyStorage, ['platform-types']), {
+    'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+  });
+  assert.throws(() => parseProgressImport(legacyStorage, ['platform-types']), /unsupported data/i);
+});
+
+test('valid import replaces assessments and reset deliberately clears them', () => {
+  const initial = createApplicationState({
+    assessments: {
+      'nullable-types': { status: 'needs-review', assessedAt: '2026-09-19' }
+    }
+  });
+  const imported = applicationStateReducer(initial, {
+    type: 'progress-replaced',
+    assessments: {
+      'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+    }
+  });
+
+  assert.deepEqual(imported.assessments, {
+    'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+  });
+  assert.deepEqual(applicationStateReducer(imported, { type: 'progress-reset' }).assessments, {});
+});
+
+test('progress filtering keeps every prerequisite visible without changing the graph', () => {
+  const nodes = [
+    { id: 'nullable-types' },
+    { id: 'platform-types' },
+    { id: 'not-null-assertion' }
+  ];
+  const links = [
+    { source: 'nullable-types', target: 'platform-types', type: 'prerequisite' },
+    { source: 'platform-types', target: 'not-null-assertion', type: 'prerequisite' },
+    { source: 'nullable-types', target: 'not-null-assertion', type: 'related' }
+  ];
+  const assessments = {
+    'not-null-assertion': { status: 'needs-review', assessedAt: '2026-09-20' }
+  };
+
+  assert.deepEqual(
+    [...getProgressVisibleIds(nodes, links, assessments, ['needs-review'])].sort(),
+    ['not-null-assertion', 'nullable-types', 'platform-types']
+  );
+  assert.equal(links.length, 3);
 });

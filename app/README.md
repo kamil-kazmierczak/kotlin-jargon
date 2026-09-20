@@ -49,6 +49,24 @@ npm run build
 
 Configured for GitHub Pages at `https://kamil-kazmierczak.github.io/kotlin-jargon/`. Deployed automatically via `.github/workflows/deploy.yml`.
 
+## Progress backup format
+
+Learning progress stays in browser storage. The Progress menu can export or import this versioned JSON format:
+
+```json
+{
+  "version": 1,
+  "assessments": {
+    "platform-types": {
+      "status": "can-explain",
+      "assessedAt": "2026-09-20"
+    }
+  }
+}
+```
+
+Supported assessment states are `needs-review`, `can-explain`, and `interview-ready`. Imports replace existing assessments only after the complete file passes validation. Selection, scratch answers, reveal state, rubric details, assessment history, filters, study paths, theme, and graph camera are never exported as progress.
+
 ## License
 
 MIT

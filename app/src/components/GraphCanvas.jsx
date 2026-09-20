@@ -1,5 +1,24 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { soundEffects } from '../utils/audio';
+import { ASSESSMENT_FILTER_STATUSES } from '../state/applicationState.mjs';
+import { getProgressVisibleIds } from '../state/graphVisibility.mjs';
+import { ASSESSMENT_DEFINITIONS } from '../state/progress.mjs';
+
+const ASSESSMENT_MARKERS = Object.fromEntries(
+  ASSESSMENT_DEFINITIONS.map(({ status, label, color, symbol }) => [status, { label, color, symbol }])
+);
+
+const getAssessmentMarker = (assessments, conceptId) => (
+  ASSESSMENT_MARKERS[assessments[conceptId]?.status || 'not-assessed']
+);
+
+const getFilteredVisibleIds = (nodes, links, assessments, filters) => {
+  const baseVisibleNodes = nodes.filter((node) => {
+    const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(node.category);
+    return categoryMatches && filters.depths.includes(node.depth);
+  });
+  return getProgressVisibleIds(baseVisibleNodes, links, assessments, filters.assessmentStatuses || []);
+};
 
 function stableUnitInterval(value) {
   let hash = 2166136261;
@@ -20,6 +39,7 @@ export default function GraphCanvas({
   temporaryReveal,
   studyPathOverlay,
   studyPaths = [],
+  assessments = {},
   onToggleFilter,
   onToggleStudyPath,
   onReturnToPreviousView,
@@ -35,6 +55,7 @@ export default function GraphCanvas({
   const containerRef = useRef(null);
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [tooltip, setTooltip] = useState(null);
+  const accessibleVisibleIds = getFilteredVisibleIds(graphData.nodes, graphData.links, assessments, filters);
 
   // Simulation and camera state refs (mutable for 60fps render loop)
   const stateRef = useRef({
@@ -331,10 +352,7 @@ export default function GraphCanvas({
           if (link.target.id === temporaryReveal.conceptId) visibleIds.add(link.source.id);
         });
       } else {
-        nodes.forEach((node) => {
-          const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(node.category);
-          if (categoryMatches && filters.depths.includes(node.depth)) visibleIds.add(node.id);
-        });
+        getFilteredVisibleIds(nodes, links, assessments, filters).forEach((id) => visibleIds.add(id));
       }
       const activePath = studyPaths.find((path) => path.id === studyPathOverlay?.pathId);
 
@@ -488,6 +506,7 @@ export default function GraphCanvas({
         const cat = categories[n.category] || {};
         const baseColor = useCategoryColors ? (cat.color || '#3b82f6') : (isDark ? '#93c5fd' : '#2563eb');
         const symbol = cat.symbol || 'K';
+        const assessmentMarker = getAssessmentMarker(assessments, n.id);
 
         ctx.save();
         
@@ -567,6 +586,20 @@ export default function GraphCanvas({
           ctx.fillText(symbol, n.x, n.y);
         }
 
+        // Learner-owned assessment marker, deliberately separate from category and relationship styling.
+        ctx.beginPath();
+        ctx.arc(n.x + n.radius * 0.72, n.y - n.radius * 0.72, 7, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? '#1a1a19' : '#eaeae8';
+        ctx.fill();
+        ctx.strokeStyle = assessmentMarker.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = assessmentMarker.color;
+        ctx.font = '700 9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(assessmentMarker.symbol, n.x + n.radius * 0.72, n.y - n.radius * 0.72 + 0.5);
+
         // Label below node
         ctx.save();
         ctx.font = `${isSelected || isHovered ? '600' : '500'} ${Math.max(10.5, Math.min(12.5, 9.5 + n.radius * 0.1))}px "JetBrains Mono", monospace`;
@@ -619,7 +652,7 @@ export default function GraphCanvas({
         cancelAnimationFrame(stateRef.current.animId);
       }
     };
-  }, [categories, selectedNodeId, hoveredNodeId, searchQuery, filters, temporaryReveal, studyPathOverlay, studyPaths, useCategoryColors, isDark]);
+  }, [categories, selectedNodeId, hoveredNodeId, searchQuery, filters, temporaryReveal, studyPathOverlay, studyPaths, assessments, useCategoryColors, isDark]);
 
   // Convert client mouse coordinate to world coordinates
   const clientToWorld = useCallback((clientX, clientY) => {
@@ -638,12 +671,12 @@ export default function GraphCanvas({
   // Find node under world coordinates
   const getNodeAt = useCallback((worldX, worldY) => {
     const { nodes } = stateRef.current;
+    const progressVisibleIds = getFilteredVisibleIds(nodes, stateRef.current.links, assessments, filters);
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
-      const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(n.category);
       const isVisible = temporaryReveal?.conceptId
         ? n.id === temporaryReveal.conceptId || stateRef.current.links.some((link) => (link.source.id === n.id && link.target.id === temporaryReveal.conceptId) || (link.target.id === n.id && link.source.id === temporaryReveal.conceptId))
-        : categoryMatches && filters.depths.includes(n.depth);
+        : progressVisibleIds.has(n.id);
       if (!isVisible) continue;
       const dist = Math.hypot(n.x - worldX, n.y - worldY);
       if (dist <= n.radius + 8) {
@@ -651,7 +684,7 @@ export default function GraphCanvas({
       }
     }
     return null;
-  }, [filters, temporaryReveal]);
+  }, [filters, temporaryReveal, assessments]);
 
   // Mouse interaction handlers
   const handleMouseDown = (e) => {
@@ -798,6 +831,15 @@ export default function GraphCanvas({
         <div className="flex flex-wrap gap-1 mb-2" aria-label="Category filters">
           {Object.values(categories).map((category) => <button key={category.id} onClick={() => onToggleFilter?.('category', category.id)} aria-pressed={filters.categoryIds.length === 0 || filters.categoryIds.includes(category.id)} className="px-1.5 py-1 border" style={{ borderColor: category.color, color: category.color }}>{category.name}</button>)}
         </div>
+        <div className="mb-2" role="group" aria-label="Assessment filters">
+          <p className="mb-1 opacity-60">Progress</p>
+          <div className="flex flex-wrap gap-1">
+            {ASSESSMENT_FILTER_STATUSES.map((status) => {
+              const marker = ASSESSMENT_MARKERS[status];
+              return <button key={status} onClick={() => onToggleFilter?.('assessment', status)} aria-pressed={(filters.assessmentStatuses || []).includes(status)} className={`px-1.5 py-1 border ${(filters.assessmentStatuses || []).includes(status) ? '' : 'opacity-50'}`} style={{ borderColor: marker.color, color: marker.color }}>{marker.symbol} {marker.label}</button>;
+            })}
+          </div>
+        </div>
         <div className="flex flex-wrap gap-1">
           {studyPaths.map((path) => <button key={path.id} onClick={() => onToggleStudyPath?.(path.id)} aria-pressed={studyPathOverlay?.pathId === path.id} className={`px-1.5 py-1 border ${studyPathOverlay?.pathId === path.id ? 'border-amber-500 text-amber-600' : ''}`}>Path: {path.name}</button>)}
         </div>
@@ -806,9 +848,9 @@ export default function GraphCanvas({
       </div>
 
       <div className="sr-only">
-        {graphData.nodes.map((node) => (
+        {graphData.nodes.filter((node) => accessibleVisibleIds.has(node.id)).map((node) => (
           <button key={node.id} onClick={() => onSelectNode(node.id)}>
-            Open {node.name} from graph
+            Open {node.name} from graph · {getAssessmentMarker(assessments, node.id).label}
           </button>
         ))}
       </div>
@@ -837,6 +879,9 @@ export default function GraphCanvas({
           </div>
           <p className="text-[11px] leading-relaxed opacity-80">
             {tooltip.node.depth}
+          </p>
+          <p className="mt-1 text-[11px]" style={{ color: getAssessmentMarker(assessments, tooltip.node.id).color }}>
+            {getAssessmentMarker(assessments, tooltip.node.id).label}
           </p>
         </div>
       )}

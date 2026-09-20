@@ -1,10 +1,11 @@
+import { ASSESSMENT_DEFINITIONS, DURABLE_ASSESSMENT_STATUSES, isIsoDate } from './progress.mjs';
+
 export const DEFAULT_CONCEPT_ID = 'nullable-types';
-export const ASSESSMENT_OPTIONS = [
-  { status: 'needs-review', label: 'Needs review' },
-  { status: 'can-explain', label: 'Can explain' },
-  { status: 'interview-ready', label: 'Interview-ready' }
-];
-export const ASSESSMENT_STATUSES = ASSESSMENT_OPTIONS.map(({ status }) => status);
+export const ASSESSMENT_OPTIONS = ASSESSMENT_DEFINITIONS
+  .filter(({ durable }) => durable)
+  .map(({ status, label }) => ({ status, label }));
+export const ASSESSMENT_STATUSES = DURABLE_ASSESSMENT_STATUSES;
+export const ASSESSMENT_FILTER_STATUSES = ASSESSMENT_DEFINITIONS.map(({ status }) => status);
 
 export const formatLocalAssessmentDate = (date = new Date()) => {
   const year = date.getFullYear();
@@ -35,7 +36,10 @@ function restoreFilters(filters = {}) {
       : [],
     depths: Array.isArray(filters.depths)
       ? filters.depths.filter((depth) => ['core', 'deep-dive', 'reference'].includes(depth))
-      : ['core']
+      : ['core'],
+    assessmentStatuses: Array.isArray(filters.assessmentStatuses)
+      ? filters.assessmentStatuses.filter((status) => ASSESSMENT_FILTER_STATUSES.includes(status))
+      : []
   };
 }
 
@@ -45,12 +49,6 @@ function captureLessonEntry(state) {
     graphView: cloneSerializable(state.graphView)
   };
 }
-
-const isIsoDate = (value) => {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-};
 
 const restoreAssessments = (assessments = {}) => {
   if (!assessments || typeof assessments !== 'object' || Array.isArray(assessments)) return {};
@@ -165,8 +163,11 @@ export function applicationStateReducer(state, event) {
         }
       };
     case 'filter-toggled': {
-      const key = event.filter === 'depth' ? 'depths' : 'categoryIds';
+      const key = event.filter === 'depth'
+        ? 'depths'
+        : event.filter === 'assessment' ? 'assessmentStatuses' : 'categoryIds';
       if (typeof event.value !== 'string') return state;
+      if (key === 'assessmentStatuses' && !ASSESSMENT_FILTER_STATUSES.includes(event.value)) return state;
       const values = state.graphView.filters[key];
       return {
         ...state,
@@ -221,6 +222,16 @@ export function applicationStateReducer(state, event) {
             assessedAt: event.assessedAt
           }
         }
+      };
+    case 'progress-replaced':
+      return {
+        ...state,
+        assessments: restoreAssessments(event.assessments)
+      };
+    case 'progress-reset':
+      return {
+        ...state,
+        assessments: {}
       };
     default:
       return state;

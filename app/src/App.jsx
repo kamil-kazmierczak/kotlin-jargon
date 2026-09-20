@@ -3,6 +3,7 @@ import contentData from './data/content.json';
 import GraphCanvas from './components/GraphCanvas';
 import SearchHUD from './components/SearchHUD';
 import NodeDetailPanel from './components/NodeDetailPanel';
+import ProgressControls from './components/ProgressControls';
 import { soundEffects } from './utils/audio';
 import {
   Search,
@@ -20,13 +21,15 @@ import {
   DEFAULT_CONCEPT_ID,
   formatLocalAssessmentDate
 } from './state/applicationState.mjs';
+import { createProgressExport, parseProgressImport, parseStoredProgress } from './state/progress.mjs';
 
 const PROGRESS_STORAGE_KEY = 'kotlin-concepts-progress';
 
-const loadStoredProgress = () => {
+const loadStoredProgress = (knownConceptIds) => {
   if (typeof window === 'undefined') return {};
   try {
-    return JSON.parse(localStorage.getItem(PROGRESS_STORAGE_KEY)) || {};
+    const stored = localStorage.getItem(PROGRESS_STORAGE_KEY);
+    return stored ? parseStoredProgress(stored, knownConceptIds) : {};
   } catch {
     return {};
   }
@@ -47,7 +50,7 @@ export default function App() {
           conceptId: DEFAULT_CONCEPT_ID,
           panelOpen: false
         },
-        assessments: loadStoredProgress().assessments
+        assessments: loadStoredProgress(concepts.map(({ id }) => id))
       });
     }
   );
@@ -88,7 +91,7 @@ export default function App() {
   }, [applicationState]);
 
   useEffect(() => {
-    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({ assessments: applicationState.assessments }));
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(createProgressExport(applicationState)));
   }, [applicationState.assessments]);
 
   // Handle URL hash navigation on mount and on hash changes
@@ -148,6 +151,21 @@ export default function App() {
   const handleCameraChange = useCallback((camera) => {
     dispatch({ type: 'camera-changed', camera });
   }, []);
+
+  const handleExportProgress = useCallback(() => {
+    const json = `${JSON.stringify(createProgressExport(applicationState), null, 2)}\n`;
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'kotlin-concepts-progress.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [applicationState]);
+
+  const handleImportProgress = useCallback((json) => {
+    const assessments = parseProgressImport(json, concepts.map(({ id }) => id));
+    dispatch({ type: 'progress-replaced', assessments });
+  }, [concepts]);
 
   // Pick a random concept
   const handleRandomConcept = () => {
@@ -234,6 +252,12 @@ export default function App() {
 
         {/* Right Toolbar Controls */}
         <div className="flex items-center gap-1.5 text-xs">
+          <ProgressControls
+            isDark={isDark}
+            onExport={handleExportProgress}
+            onImport={handleImportProgress}
+            onReset={() => dispatch({ type: 'progress-reset' })}
+          />
           {/* Tiny Search Button */}
           <button
             onClick={() => {
@@ -344,6 +368,7 @@ export default function App() {
           temporaryReveal={graphView.temporaryReveal}
           studyPathOverlay={graphView.studyPathOverlay}
           studyPaths={contentData.studyPaths}
+          assessments={applicationState.assessments}
           onToggleFilter={(filter, value) => dispatch({ type: 'filter-toggled', filter, value })}
           onToggleStudyPath={(pathId) => dispatch({ type: 'study-path-toggled', pathId })}
           onReturnToPreviousView={() => dispatch({ type: 'temporary-reveal-returned' })}

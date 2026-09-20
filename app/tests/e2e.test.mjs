@@ -177,7 +177,8 @@ server.listen(PORT, '127.0.0.1', async () => {
     await practice.getByRole('button', { name: 'Can explain' }).click();
     await practice.getByText(/^Assessed .*Can explain$/).waitFor({ state: 'visible' });
     const storedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
-    assert.deepEqual(Object.keys(storedProgress), ['assessments']);
+    assert.deepEqual(Object.keys(storedProgress).sort(), ['assessments', 'version']);
+    assert.equal(storedProgress.version, 1);
     assert.equal(storedProgress.assessments['platform-types'].status, 'can-explain');
     assert.equal(JSON.stringify(storedProgress).includes('normalize the Java boundary'), false);
 
@@ -198,6 +199,63 @@ server.listen(PORT, '127.0.0.1', async () => {
     assert.deepEqual(Object.keys(reassessedProgress.assessments['platform-types']).sort(), ['assessedAt', 'status']);
     assert.equal(reassessedProgress.assessments['platform-types'].status, 'needs-review');
     console.log('✓ Scratch and reveal stay ephemeral; explicit assessment persists and can be downgraded.');
+
+    console.log('Running acceptance: progress filtering preserves prerequisites...');
+    await page.getByRole('button', { name: 'Close concept' }).click();
+    await page.getByRole('button', { name: 'deep-dive', exact: true }).click();
+    await page.getByRole('button', { name: 'Path: Java developer foundations', exact: true }).click();
+    const assessmentFilters = page.getByRole('group', { name: 'Assessment filters' });
+    await assessmentFilters.getByRole('button', { name: /Needs review/ }).click();
+    await page.getByRole('button', { name: /Open Platform types from graph · Needs review/ }).waitFor({ state: 'attached' });
+    await page.getByRole('button', { name: /Open Nullable types from graph · Not assessed/ }).waitFor({ state: 'attached' });
+    assert.equal(await page.getByRole('button', { name: /Open Not-null assertion from graph/ }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Path: Java developer foundations', exact: true }).getAttribute('aria-pressed'), 'true');
+    console.log('✓ Assessment filtering focuses the graph while retaining prerequisites and the curated path.');
+
+    console.log('Running acceptance: progress export, import validation, replacement, and reset...');
+    await page.getByRole('button', { name: 'Manage progress' }).click();
+    const progressDialog = page.getByRole('dialog', { name: 'Your learning progress' });
+    const downloadPromise = page.waitForEvent('download');
+    await progressDialog.getByRole('button', { name: 'Export progress JSON' }).click();
+    const download = await downloadPromise;
+    const exportedProgress = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+    assert.deepEqual(Object.keys(exportedProgress).sort(), ['assessments', 'version']);
+    assert.equal(exportedProgress.version, 1);
+    assert.equal(exportedProgress.assessments['platform-types'].status, 'needs-review');
+
+    const importInput = progressDialog.getByLabel('Progress JSON file');
+    await importInput.setInputFiles({
+      name: 'invalid-progress.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        version: 1,
+        assessments: { unknown: { status: 'can-explain', assessedAt: '2026-09-20' } }
+      }))
+    });
+    await progressDialog.getByText(/^Import failed: Unknown concept: unknown\.$/).waitFor({ state: 'visible' });
+    const afterFailedImport = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
+    assert.equal(afterFailedImport.assessments['platform-types'].status, 'needs-review');
+
+    await importInput.setInputFiles({
+      name: 'valid-progress.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        version: 1,
+        assessments: { 'nullable-types': { status: 'can-explain', assessedAt: '2026-09-20' } }
+      }))
+    });
+    await progressDialog.getByText('Progress restored.').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => {
+      const progress = JSON.parse(localStorage.getItem('kotlin-concepts-progress'));
+      return progress.assessments['nullable-types']?.status === 'can-explain' && !progress.assessments['platform-types'];
+    });
+
+    await progressDialog.getByRole('button', { name: 'Reset all progress' }).click();
+    const resetDialog = progressDialog.getByRole('alertdialog', { name: 'Confirm reset progress' });
+    await resetDialog.getByRole('button', { name: 'Yes, reset all progress' }).click();
+    await progressDialog.getByText('Progress reset.').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem('kotlin-concepts-progress')).assessments).length === 0);
+    console.log('✓ Export is versioned, invalid imports preserve data, valid imports replace it, and reset requires confirmation.');
 
   } catch (err) {
     console.error('Test failed:', err);
