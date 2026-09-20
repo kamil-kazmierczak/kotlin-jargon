@@ -10,7 +10,8 @@
     "verify": "npm run verify:examples && npm --prefix app run verify",
     "verify:examples": "./examples/gradlew -p examples --no-daemon verifyExamples",
     "test": "eslint readme.md",
-    "toc": "roadmarks"
+    "toc": "roadmarks",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -30,11 +31,7 @@
     "eslint-plugin-n": "^15.2.4",
     "eslint-plugin-promise": "^6.0.0",
     "eslint-plugin-standard": "^5.0.0",
-    "pre-commit": "^1.2.2",
+    "husky": "^9.1.7",
     "roadmarks": "^1.6.3"
-  },
-  "pre-commit": [
-    "test",
-    "toc"
-  ]
+  }
 }

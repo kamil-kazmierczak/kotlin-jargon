@@ -3,7 +3,7 @@
 This project is a work in progress. Contributions are very welcome.
 
 ## Hard rules
-There is a pre-commit hook that runs:  `npm run test && npm run roadmarks` for linting the readme and creating the TOC.
+There is a Husky pre-commit hook that runs `npm test && npm run toc` to lint the README and update its table of contents.
 
 That said, we'd like to maintain some consistency across the document.
 

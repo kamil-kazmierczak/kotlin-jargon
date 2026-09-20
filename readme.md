@@ -35,6 +35,7 @@ __Translations__
 __Table of Contents__
 <!-- RM(noparent,notop) -->
 
+* [Verify the application](#verify-the-application)
 * [Arity](#arity)
 * [Higher-Order Functions (HOF)](#higher-order-functions-hof)
 * [Closure](#closure)
