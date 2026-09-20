@@ -1,4 +1,17 @@
 export const DEFAULT_CONCEPT_ID = 'nullable-types';
+export const ASSESSMENT_OPTIONS = [
+  { status: 'needs-review', label: 'Needs review' },
+  { status: 'can-explain', label: 'Can explain' },
+  { status: 'interview-ready', label: 'Interview-ready' }
+];
+export const ASSESSMENT_STATUSES = ASSESSMENT_OPTIONS.map(({ status }) => status);
+
+export const formatLocalAssessmentDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 function cloneSerializable(value) {
   if (value == null) return null;
@@ -33,6 +46,25 @@ function captureLessonEntry(state) {
   };
 }
 
+const isIsoDate = (value) => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+const restoreAssessments = (assessments = {}) => {
+  if (!assessments || typeof assessments !== 'object' || Array.isArray(assessments)) return {};
+
+  return Object.fromEntries(Object.entries(assessments).filter(([conceptId, assessment]) => {
+    if (typeof conceptId !== 'string' || !assessment || typeof assessment !== 'object') return false;
+    if (!ASSESSMENT_STATUSES.includes(assessment.status)) return false;
+    return isIsoDate(assessment.assessedAt);
+  }).map(([conceptId, assessment]) => [conceptId, {
+    status: assessment.status,
+    assessedAt: assessment.assessedAt
+  }]));
+};
+
 export function createApplicationState(initialState = {}) {
   const selection = initialState.selection || {};
   const graphView = initialState.graphView || {};
@@ -50,6 +82,7 @@ export function createApplicationState(initialState = {}) {
       studyPathOverlay: cloneSerializable(graphView.studyPathOverlay),
       temporaryReveal: cloneSerializable(graphView.temporaryReveal)
     },
+    assessments: restoreAssessments(initialState.assessments),
     lessonContext: null
   };
 }
@@ -109,6 +142,7 @@ export function applicationStateReducer(state, event) {
       if (state.lessonContext) {
         return {
           ...state.lessonContext.entry,
+          assessments: state.assessments,
           lessonContext: null
         };
       }
@@ -174,6 +208,20 @@ export function applicationStateReducer(state, event) {
       };
     case 'application-state-restored':
       return restoreApplicationState(event.snapshot);
+    case 'concept-assessed':
+      if (typeof event.conceptId !== 'string' ||
+          !ASSESSMENT_STATUSES.includes(event.status) ||
+          !isIsoDate(event.assessedAt)) return state;
+      return {
+        ...state,
+        assessments: {
+          ...state.assessments,
+          [event.conceptId]: {
+            status: event.status,
+            assessedAt: event.assessedAt
+          }
+        }
+      };
     default:
       return state;
   }

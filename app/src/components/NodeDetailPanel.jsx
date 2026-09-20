@@ -33,9 +33,15 @@ export default function NodeDetailPanel({
   onClose,
   soundEnabled,
   useCategoryColors,
-  isDark
+  isDark,
+  assessment,
+  assessmentOptions,
+  onAssess
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [interviewReached, setInterviewReached] = useState(false);
+  const [scratchAnswer, setScratchAnswer] = useState('');
+  const [reasoningRevealed, setReasoningRevealed] = useState(false);
   if (!concept) return null;
 
   const category = categories[concept.curriculum.categoryId] || {};
@@ -57,6 +63,13 @@ export default function NodeDetailPanel({
   const startLesson = () => {
     document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const reachInterview = () => {
+    setInterviewReached(true);
+    setTimeout(() => document.getElementById('interview-practice')?.scrollIntoView({ behavior: 'smooth' }));
+  };
+
+  const assessmentLabel = assessmentOptions.find(({ status }) => status === assessment?.status)?.label;
 
   return (
     <aside
@@ -142,7 +155,92 @@ export default function NodeDetailPanel({
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Connections</h3>
             <Markdown>{concept.lesson.connections}</Markdown>
           </div>
+          {concept.interview && !interviewReached && (
+            <button
+              type="button"
+              onClick={reachInterview}
+              className="w-full border border-current/20 px-3 py-2 text-xs font-semibold"
+            >
+              Continue to interview practice
+            </button>
+          )}
         </section>
+
+        {concept.interview && interviewReached && (
+          <section
+            id="interview-practice"
+            role="region"
+            aria-labelledby="interview-practice-heading"
+            className={`scroll-mt-4 border p-4 space-y-4 ${isDark ? 'border-white/15 bg-[#1a1a19]' : 'border-black/15 bg-[#dededb]'}`}
+          >
+            <div>
+              <p className="text-[10px] uppercase tracking-widest opacity-60">Reason it through</p>
+              <h3 id="interview-practice-heading" className="mt-1 text-sm font-bold">Interview practice</h3>
+            </div>
+            <Markdown>{concept.interview.question}</Markdown>
+            <label className="block text-xs">
+              <span className="block mb-2 font-semibold">Optional scratch answer</span>
+              <textarea
+                aria-label="Optional scratch answer"
+                value={scratchAnswer}
+                onChange={(event) => setScratchAnswer(event.target.value)}
+                rows={5}
+                placeholder="Think in your own words. This is not saved."
+                className="w-full resize-y border border-current/20 bg-transparent p-3 text-xs"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setReasoningRevealed(true)}
+              className="border border-current/20 px-3 py-2 text-xs font-semibold"
+            >
+              Reveal reasoning
+            </button>
+
+            {reasoningRevealed && (
+              <div className="space-y-4 border-t border-current/10 pt-4">
+                {[
+                  ['Essential points', concept.interview.essentialPoints],
+                  ['Trade-offs', concept.interview.tradeOffs],
+                  ['Common traps', concept.interview.commonTraps],
+                  ['Likely follow-up probes', concept.interview.followUpProbes]
+                ].map(([heading, content]) => (
+                  <div key={heading}>
+                    <h4 className="mb-1 text-xs font-bold">{heading}</h4>
+                    <Markdown>{content}</Markdown>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3 border-t border-current/10 pt-4">
+              <div>
+                <h4 className="text-xs font-bold">Assess your understanding</h4>
+                <p className="mt-1 text-[11px] opacity-70">
+                  These are your own judgments, not scores or certification.
+                </p>
+              </div>
+              <p className="text-xs">
+                {assessment
+                  ? `Assessed ${assessment.assessedAt} · ${assessmentLabel}`
+                  : 'Not assessed'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {assessmentOptions.map(({ status, label }) => (
+                  <button
+                    key={status}
+                    type="button"
+                    aria-pressed={assessment?.status === status}
+                    onClick={() => onAssess(status)}
+                    className="border border-current/20 px-3 py-2 text-xs"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {prerequisites.length > 0 && (
           <section>

@@ -79,6 +79,28 @@ This concept is the foundation for safe Java boundaries.
 - [Kotlin null safety](https://kotlinlang.org/docs/null-safety.html)
 `;
 
+const interviewPractice = `
+## Interview question
+
+How would you handle an unannotated Java return type in Kotlin?
+
+## Essential points
+
+- Kotlin treats it as a platform type.
+
+## Trade-offs
+
+- A nullable type is safer but needs explicit handling.
+
+## Common traps
+
+- Treating \`String!\` as Kotlin syntax.
+
+## Follow-up probes
+
+- What changes when the Java API adds nullability annotations?
+`;
+
 test('parses structured Markdown into metadata and named lesson sections', () => {
   const concept = parseConceptSource('nullable-types.md', compactConcept);
 
@@ -204,6 +226,21 @@ test('generates distinct identity, curriculum, lesson, relationship, and provena
   assert.equal(concept.provenance.verifiedAt, '2026-09-19');
   assert.deepEqual(data.graph.links, []);
   assert.equal(data.graph.nodes[0].depth, 'core');
+});
+
+test('generates an authored interview rubric without flattening it into a model answer', () => {
+  const data = buildContentModel({
+    manifest,
+    conceptSources: [{ filePath: 'nullable-types.md', source: `${compactConcept}\n${interviewPractice}` }]
+  });
+
+  assert.deepEqual(data.concepts[0].interview, {
+    question: 'How would you handle an unannotated Java return type in Kotlin?',
+    essentialPoints: '- Kotlin treats it as a platform type.',
+    tradeOffs: '- A nullable type is safer but needs explicit handling.',
+    commonTraps: '- Treating `String!` as Kotlin syntax.',
+    followUpProbes: '- What changes when the Java API adds nullability annotations?'
+  });
 });
 
 test('generation is deterministic regardless of source discovery order', () => {

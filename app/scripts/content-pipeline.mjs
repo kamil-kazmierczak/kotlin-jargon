@@ -19,8 +19,21 @@ const SECTION_KEYS = {
   'Semantics': 'semantics',
   'Example': 'example',
   'Connections': 'connections',
-  'Sources': 'sources'
+  'Sources': 'sources',
+  'Interview question': 'interviewQuestion',
+  'Essential points': 'essentialPoints',
+  'Trade-offs': 'tradeOffs',
+  'Common traps': 'commonTraps',
+  'Follow-up probes': 'followUpProbes'
 };
+
+const INTERVIEW_SECTION_KEYS = [
+  'interviewQuestion',
+  'essentialPoints',
+  'tradeOffs',
+  'commonTraps',
+  'followUpProbes'
+];
 
 export class ContentValidationError extends Error {
   constructor(issues) {
@@ -234,6 +247,10 @@ function validateConceptShape(concept, manifest, issues) {
   if (sources.length === 0 && sectionHeadings.has('Sources')) {
     issues.push(`${filePath}: Sources must contain at least one authoritative HTTPS link`);
   }
+  const interviewSectionCount = INTERVIEW_SECTION_KEYS.filter((key) => concept.sections[key]).length;
+  if (interviewSectionCount > 0 && interviewSectionCount !== INTERVIEW_SECTION_KEYS.length) {
+    issues.push(`${filePath}: interview practice must include question, essential points, trade-offs, common traps, and follow-up probes`);
+  }
   for (const codeBlock of concept.codeBlocks) {
     if (['kotlin', 'java'].includes(codeBlock.language) && !VERIFICATION_MODES.has(codeBlock.verification)) {
       issues.push(`${filePath}: code block must declare one of ${[...VERIFICATION_MODES].join(', ')} verification modes`);
@@ -373,6 +390,17 @@ export function buildContentModel({ manifest, conceptSources }) {
       connections: concept.sections.connections,
       codeBlocks: concept.codeBlocks
     },
+    ...(concept.sections.interviewQuestion
+      ? {
+          interview: {
+            question: concept.sections.interviewQuestion,
+            essentialPoints: concept.sections.essentialPoints,
+            tradeOffs: concept.sections.tradeOffs,
+            commonTraps: concept.sections.commonTraps,
+            followUpProbes: concept.sections.followUpProbes
+          }
+        }
+      : {}),
     provenance: {
       sourcePath: concept.filePath,
       baselineId: concept.metadata.baseline,

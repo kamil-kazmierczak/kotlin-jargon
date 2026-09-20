@@ -14,10 +14,23 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from './components/Icons';
 import {
+  ASSESSMENT_OPTIONS,
   applicationStateReducer,
   createApplicationState,
-  DEFAULT_CONCEPT_ID
+  DEFAULT_CONCEPT_ID,
+  formatLocalAssessmentDate
 } from './state/applicationState.mjs';
+
+const PROGRESS_STORAGE_KEY = 'kotlin-concepts-progress';
+
+const loadStoredProgress = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(PROGRESS_STORAGE_KEY)) || {};
+  } catch {
+    return {};
+  }
+};
 
 export default function App() {
   const { meta, categories, concepts, graph } = contentData;
@@ -33,7 +46,8 @@ export default function App() {
         selection: {
           conceptId: DEFAULT_CONCEPT_ID,
           panelOpen: false
-        }
+        },
+        assessments: loadStoredProgress().assessments
       });
     }
   );
@@ -72,6 +86,10 @@ export default function App() {
   useEffect(() => {
     applicationStateRef.current = applicationState;
   }, [applicationState]);
+
+  useEffect(() => {
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify({ assessments: applicationState.assessments }));
+  }, [applicationState.assessments]);
 
   // Handle URL hash navigation on mount and on hash changes
   useEffect(() => {
@@ -341,6 +359,7 @@ export default function App() {
       {/* Slideover Detail Drawer */}
       {activeConcept && (
         <NodeDetailPanel
+          key={activeConcept.id}
           concept={activeConcept}
           categories={categories}
           allConceptsMap={allConceptsMap}
@@ -353,6 +372,14 @@ export default function App() {
           soundEnabled={soundEnabled}
           useCategoryColors={useCategoryColors}
           isDark={isDark}
+          assessment={applicationState.assessments[activeConcept.id]}
+          assessmentOptions={ASSESSMENT_OPTIONS}
+          onAssess={(status) => dispatch({
+            type: 'concept-assessed',
+            conceptId: activeConcept.id,
+            status,
+            assessedAt: formatLocalAssessmentDate()
+          })}
         />
       )}
 

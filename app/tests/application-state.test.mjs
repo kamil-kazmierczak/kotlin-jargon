@@ -5,6 +5,7 @@ import {
   applicationStateReducer,
   captureApplicationState,
   createApplicationState,
+  formatLocalAssessmentDate,
   restoreApplicationState
 } from '../src/state/applicationState.mjs';
 
@@ -24,6 +25,7 @@ test('the default state keeps the graph highlight while the concept panel is clo
       studyPathOverlay: null,
       temporaryReveal: null
     },
+    assessments: {},
     lessonContext: null
   });
 });
@@ -123,4 +125,71 @@ test('studying a preview retains a trail and closing the lesson restores its gra
   assert.deepEqual(closed.selection, graphEntry.selection);
   assert.deepEqual(closed.graphView, graphEntry.graphView);
   assert.equal(closed.lessonContext, null);
+});
+
+test('only explicit self-assessment changes learner-owned progress', () => {
+  const initial = createApplicationState();
+  const passiveEvents = [
+    { type: 'lesson-opened', conceptId: 'platform-types' },
+    { type: 'interview-section-reached', conceptId: 'platform-types' },
+    { type: 'scratch-changed', conceptId: 'platform-types', value: 'Maybe nullable?' },
+    { type: 'reasoning-revealed', conceptId: 'platform-types' }
+  ];
+  const afterPassiveEvents = passiveEvents.reduce(applicationStateReducer, initial);
+
+  assert.deepEqual(afterPassiveEvents.assessments, {});
+
+  const assessed = applicationStateReducer(afterPassiveEvents, {
+    type: 'concept-assessed',
+    conceptId: 'platform-types',
+    status: 'can-explain',
+    assessedAt: '2026-09-20'
+  });
+  assert.deepEqual(assessed.assessments, {
+    'platform-types': { status: 'can-explain', assessedAt: '2026-09-20' }
+  });
+});
+
+test('reassessment replaces status and date without keeping a history timeline', () => {
+  const initial = createApplicationState({
+    assessments: {
+      'platform-types': { status: 'interview-ready', assessedAt: '2026-09-19' }
+    }
+  });
+  const downgraded = applicationStateReducer(initial, {
+    type: 'concept-assessed',
+    conceptId: 'platform-types',
+    status: 'needs-review',
+    assessedAt: '2026-09-20'
+  });
+
+  assert.deepEqual(downgraded.assessments['platform-types'], {
+    status: 'needs-review',
+    assessedAt: '2026-09-20'
+  });
+  assert.equal(Object.hasOwn(downgraded.assessments['platform-types'], 'history'), false);
+});
+
+test('restoring progress rejects malformed assessment entries', () => {
+  const restored = restoreApplicationState({
+    assessments: {
+      valid: { status: 'needs-review', assessedAt: '2026-09-20' },
+      'bad-status': { status: 'mastered', assessedAt: '2026-09-20' },
+      'bad-date': { status: 'can-explain', assessedAt: 'today' }
+    }
+  });
+
+  assert.deepEqual(restored.assessments, {
+    valid: { status: 'needs-review', assessedAt: '2026-09-20' }
+  });
+});
+
+test('assessment dates use the learner local calendar date', () => {
+  const learnerLocalTime = {
+    getFullYear: () => 2026,
+    getMonth: () => 8,
+    getDate: () => 20
+  };
+
+  assert.equal(formatLocalAssessmentDate(learnerLocalTime), '2026-09-20');
 });

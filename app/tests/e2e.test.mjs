@@ -61,6 +61,9 @@ server.listen(PORT, '127.0.0.1', async () => {
       await panel.getByRole('heading', { name: title, exact: true }).waitFor({ state: 'visible' });
     };
 
+    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await page.evaluate(() => localStorage.clear());
+
     console.log('Running acceptance: clean root visit...');
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await page.getByRole('region', { name: 'Concept graph' }).waitFor({ state: 'visible' });
@@ -152,6 +155,49 @@ server.listen(PORT, '127.0.0.1', async () => {
     await page.getByRole('button', { name: 'Close concept' }).click();
     await page.getByRole('complementary').waitFor({ state: 'detached' });
     console.log('✓ Preview, Escape return, explicit study, trail-back, and lesson close agree.');
+
+    console.log('Running acceptance: platform-types interview practice and self-assessment...');
+    await page.goto(`${baseUrl}#platform-types`, { waitUntil: 'networkidle' });
+    await expectConcept('Platform types');
+    assert.equal(await page.getByRole('heading', { name: 'Interview practice' }).count(), 0);
+    await page.getByRole('button', { name: 'Study this concept' }).click();
+    await page.getByRole('button', { name: 'Continue to interview practice' }).click();
+    const practice = page.getByRole('region', { name: 'Interview practice' });
+    await practice.getByText(/Java API returns an unannotated String/).waitFor({ state: 'visible' });
+    assert.equal(await practice.getByRole('heading', { name: 'Essential points' }).count(), 0);
+    assert.equal(await practice.getByText('Not assessed', { exact: true }).count(), 1);
+
+    const scratch = practice.getByRole('textbox', { name: 'Optional scratch answer' });
+    await scratch.fill('I would normalize the Java boundary to String?.');
+    assert.equal(await practice.getByRole('button', { name: 'Reveal reasoning' }).isEnabled(), true);
+    await practice.getByRole('button', { name: 'Reveal reasoning' }).click();
+    await practice.getByRole('heading', { name: 'Essential points' }).waitFor({ state: 'visible' });
+    assert.equal(await practice.getByText('Not assessed', { exact: true }).count(), 1);
+
+    await practice.getByRole('button', { name: 'Can explain' }).click();
+    await practice.getByText(/^Assessed .*Can explain$/).waitFor({ state: 'visible' });
+    const storedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
+    assert.deepEqual(Object.keys(storedProgress), ['assessments']);
+    assert.equal(storedProgress.assessments['platform-types'].status, 'can-explain');
+    assert.equal(JSON.stringify(storedProgress).includes('normalize the Java boundary'), false);
+
+    await page.reload({ waitUntil: 'networkidle' });
+    await expectConcept('Platform types');
+    assert.equal(await page.getByRole('heading', { name: 'Interview practice' }).count(), 0);
+    assert.equal(await page.getByRole('heading', { name: 'Essential points' }).count(), 0);
+    assert.equal(await page.getByRole('textbox', { name: 'Optional scratch answer' }).count(), 0);
+    await page.getByRole('button', { name: 'Continue to interview practice' }).click();
+    const revisitedPractice = page.getByRole('region', { name: 'Interview practice' });
+    assert.equal(await revisitedPractice.getByRole('textbox', { name: 'Optional scratch answer' }).inputValue(), '');
+    assert.equal(await revisitedPractice.getByRole('heading', { name: 'Essential points' }).count(), 0);
+    await revisitedPractice.getByText(/^Assessed .*Can explain$/).waitFor({ state: 'visible' });
+
+    await revisitedPractice.getByRole('button', { name: 'Needs review' }).click();
+    await revisitedPractice.getByText(/^Assessed .*Needs review$/).waitFor({ state: 'visible' });
+    const reassessedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('kotlin-concepts-progress')));
+    assert.deepEqual(Object.keys(reassessedProgress.assessments['platform-types']).sort(), ['assessedAt', 'status']);
+    assert.equal(reassessedProgress.assessments['platform-types'].status, 'needs-review');
+    console.log('✓ Scratch and reveal stay ephemeral; explicit assessment persists and can be downgraded.');
 
   } catch (err) {
     console.error('Test failed:', err);
