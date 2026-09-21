@@ -112,47 +112,59 @@
     },
     {
       "id": "java-developer-foundations",
-      "name": "Java developer foundations",
-      "description": "A curated path through the Kotlin concepts that matter first to an experienced Java developer.",
+      "name": "Kotlin type system and null safety",
+      "description": "Reason from Kotlin's nullable, flow-sensitive, top, bottom, and unit types, then normalize uncertain Java values at the boundary.",
       "conceptIds": [
         "nullable-types",
+        "smart-casts",
+        "any",
+        "unit",
+        "nothing",
         "platform-types",
         "not-null-assertion"
       ],
       "scenario": {
-        "title": "Stabilize a Java customer boundary",
-        "context": "A Kotlin service calls a legacy Java CustomerApi. Its unannotated findDisplayName method is used to build a response required by a downstream Java client.",
+        "title": "Make an uncertain Java customer boundary safe",
+        "context": "A Kotlin service calls the unannotated Java LegacyCustomerApi.lookup method. The method returns Object, may return null, and may return a value of the wrong runtime type. Kotlin must produce a non-blank display label or reject the invalid value without masking uncertainty behind !!. The complete runnable example is in the Nothing lesson.",
         "stages": [
           {
             "id": "predict-boundary",
             "kind": "Prediction",
-            "prompt": "What Kotlin type and runtime behavior should you expect when findDisplayName returns null, but its Java signature only says String?",
-            "feedback": "The call enters Kotlin as the platform type String!. Kotlin lets you use it as String or String?, so an immediate non-null assignment can compile and then fail at runtime when Java returns null.",
-            "nextConstraint": "Production traces now show that null means the customer deliberately has no public display name. The API boundary must preserve that domain fact."
+            "prompt": "What uncertainty enters Kotlin from the unannotated Java Object return? Predict the risk of assigning it directly to non-null Any and explain the first type you would write at the boundary.",
+            "feedback": "The Java result enters as the platform type Any!. Assigning a returned null directly to Any can compile and fail at the generated null check. Normalize immediately as Any? so both absence and the unknown runtime subtype remain explicit.",
+            "nextConstraint": "The normalized value is Any?. Null means no public name, String is the only accepted payload, and every other runtime type is an upstream contract violation."
           },
           {
-            "id": "diagnose-contract",
-            "kind": "Diagnosis",
-            "prompt": "Where should nullability be made explicit, and why is waiting for a later dereference too weak?",
-            "feedback": "Normalize the platform type at the Java boundary, for example as val displayName: String? = api.findDisplayName(id). That gives the rest of the Kotlin code an honest nullable contract and forces handling near the source.",
-            "nextConstraint": "A teammate proposes displayName!! because the downstream response still requires a non-null label. You must choose a deliberate fallback or assertion policy."
+            "id": "classify-value",
+            "kind": "Type reasoning",
+            "prompt": "Design the when branches for Any?. Where do smart casts apply, what does the null branch produce, and why does the invalid branch type-check when it calls a function returning Nothing?",
+            "feedback": "Handle null with the explicit Anonymous fallback, use is String so the matching branch smart-casts the stable subject, and send the else branch to reject(...): Nothing. Nothing is a subtype of every result type, so that branch can abort while the whole when still has type String.",
+            "nextConstraint": "A present String may contain surrounding whitespace or become empty after trimming. The service also needs an audit side effect whose result is deliberately ignored."
           },
           {
-            "id": "design-response",
-            "kind": "Design choice",
-            "prompt": "Would you use !!, a fallback, or reject the response? State the invariant and operational trade-off behind your choice.",
-            "feedback": "Use !! only when an independently enforced invariant makes null impossible and a crash is the intended failure mode. Here null is valid domain data, so an explicit fallback or a modeled rejection keeps the policy visible and testable.",
-            "nextConstraint": "The boundary, nullable domain value, and response policy now need to be reviewed as one design rather than three isolated syntax choices."
+            "id": "normalize-name",
+            "kind": "Implementation choice",
+            "prompt": "Choose between a safe-call chain, an explicit check, Elvis handling, and !! for the String branch. Also state the type and meaning of the audit function's return.",
+            "feedback": "Trim the already smart-cast String and use takeIf plus Elvis to turn blank text into Anonymous. An explicit check would be equally honest when distinct branches need different effects. !! is unjustified because absence is known domain data, not an impossible state. The audit function returns Unit: one ordinary value that makes the effectful function usable in Kotlin's expression and generic type system.",
+            "nextConstraint": "The boundary now produces Ada for text, Anonymous for null or blank text, and a deliberate IllegalArgumentException for any other runtime type."
+          },
+          {
+            "id": "defend-policy",
+            "kind": "Design review",
+            "prompt": "Defend the completed boundary design and its tests. Under what stronger invariant, if any, could !! be justified, and which Kotlin 2.4 Java-boundary changes must a migration review consider?",
+            "feedback": "Keep Any? at the uncertain edge, test text, null, blank, and wrong-type cases, and expose only the normalized String downstream. !! is defensible only when a separately enforced invariant proves non-null and an immediate NullPointerException is the intended invariant failure. Kotlin 2.4 also rejects unsafe flexible nullable type arguments, enforces Jakarta nullability annotations, and tightens non-abstract Java sealed-class exhaustiveness; annotation target and metadata changes matter when recompiling boundary declarations.",
+            "nextConstraint": "Review the platform assumption, flow proof, fallback, exceptional branch, Unit effect, and failure policy as one boundary contract before marking the group scenario-ready."
           }
         ],
         "debrief": {
-          "connections": "Platform types explain why Kotlin initially trusts the Java signature; nullable types express the boundary fact inside Kotlin; the not-null assertion is a policy choice with a failure mode, not a conversion technique.",
-          "tradeOffs": "Normalizing to String? adds handling work but localizes uncertainty. A fallback keeps the request alive but may hide missing data. Rejecting is explicit but reduces availability. An assertion is shortest but turns a known valid null into a crash.",
+          "connections": "The platform type marks an uncertain Java contract; Any? preserves both nullability and runtime-type uncertainty; smart casts refine a stable value after checks; Elvis selects the blank-name policy; Nothing makes rejection compose with the String result; Unit names the audit effect; and !! remains an explicit invariant assertion rather than a conversion strategy.",
+          "tradeOffs": "Normalizing at the edge adds handling code but confines uncertainty. A fallback preserves availability but must match the domain meaning of absence. Rejecting unexpected runtime types fails early with context. !! is shorter only by discarding an uncertainty the boundary actually has.",
           "rubric": [
-            "Identifies the unannotated Java result as a platform type and predicts the runtime risk.",
-            "Moves uncertainty into an explicit nullable type at the interoperability boundary.",
-            "Chooses a response policy by naming its invariant, user impact, and failure mode.",
-            "Explains how the three decisions reinforce one coherent boundary design."
+            "Identifies Any! as a platform type, predicts the non-null assignment risk, and normalizes it to Any? at the Java boundary.",
+            "Uses a stable when subject and explains the String smart cast, the null fallback, and the invalid-type branch.",
+            "Explains why Nothing composes with a String result and why Unit represents the completed audit effect.",
+            "Chooses safe calls, Elvis, or explicit checks according to the policy and rejects unjustified !! usage.",
+            "Tests every boundary outcome and labels Kotlin 2.4-specific Java interoperability behavior instead of presenting it as timeless."
           ]
         }
       }

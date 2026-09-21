@@ -29,7 +29,8 @@ See [`docs/publication-contract.md`](../docs/publication-contract.md) for the hu
 For human review of unpublished content, run `npm run dev:preview` from `app/`.
 This explicitly selects the preview dataset and exports; normal development and builds still
 use only verified content. `npm run test:preview` builds into `.preview/dist` and checks the
-execution/core-semantics group in the browser without altering the production build.
+execution/core-semantics and type-system/null-safety groups in the browser without altering the
+production build.
 
 ## Agent & LLM discovery
 

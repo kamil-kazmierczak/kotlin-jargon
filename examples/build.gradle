@@ -104,7 +104,11 @@ examples.each { identity, blocks ->
         }
         if (result.exitValue == 0) throw new GradleException("${identity} compiled but is marked compile-fails")
         def diagnostic = output.toString('UTF-8').toLowerCase(Locale.ROOT)
-        def categories = ['type-mismatch': 'type mismatch', 'unresolved-reference': 'unresolved reference']
+        def categories = [
+          'type-mismatch': 'type mismatch',
+          'unresolved-reference': 'unresolved reference',
+          'smart-cast-impossible': 'smart cast to'
+        ]
         if (!categories.containsKey(blocks[0].attributes.category) || !diagnostic.contains(categories[blocks[0].attributes.category])) {
           throw new GradleException("${identity} did not produce diagnostic category ${blocks[0].attributes.category}")
         }
@@ -125,18 +129,12 @@ examples.each { identity, blocks ->
       kotlinClasses.mkdirs()
       javaClasses.mkdirs()
       def launcher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25); vendor = JvmVendorSpec.ADOPTIUM }.get()
-      if (!kotlinSources.empty) {
-        def result = execOperations.javaexec {
-          executable = launcher.executablePath.asFile.absolutePath
-          classpath = configurations.detachedConfiguration(dependencies.create('org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.20'))
-          mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
-          args '-language-version', '2.4', '-api-version', '2.4', '-jvm-target', '21', '-classpath', configurations.runtimeClasspath.asPath, '-d', kotlinClasses.absolutePath
-          args kotlinSources*.absolutePath
-          ignoreExitValue = true
-        }
-        if (result.exitValue != 0) throw new GradleException("${identity} Kotlin source did not compile")
+      def javaFirst = blocks.every { it.attributes.order == 'java-first' }
+      if (blocks.any { it.attributes.order == 'java-first' } && !javaFirst) {
+        throw new GradleException("Example '${identity}' must use order=java-first on every source block")
       }
-      if (!javaSources.empty) {
+      def compileJava = {
+        if (javaSources.empty) return
         def compiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25); vendor = JvmVendorSpec.ADOPTIUM }.get()
         def result = execOperations.exec {
           executable = compiler.executablePath.asFile.absolutePath
@@ -146,6 +144,19 @@ examples.each { identity, blocks ->
         }
         if (result.exitValue != 0) throw new GradleException("${identity} Java source did not compile")
       }
+      if (javaFirst) compileJava()
+      if (!kotlinSources.empty) {
+        def result = execOperations.javaexec {
+          executable = launcher.executablePath.asFile.absolutePath
+          classpath = configurations.detachedConfiguration(dependencies.create('org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.20'))
+          mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+          args '-language-version', '2.4', '-api-version', '2.4', '-jvm-target', '21', '-classpath', (files(javaClasses) + configurations.runtimeClasspath).asPath, '-d', kotlinClasses.absolutePath
+          args kotlinSources*.absolutePath
+          ignoreExitValue = true
+        }
+        if (result.exitValue != 0) throw new GradleException("${identity} Kotlin source did not compile")
+      }
+      if (!javaFirst) compileJava()
       if (mode == 'run') {
         def output = new ByteArrayOutputStream()
         execOperations.javaexec {

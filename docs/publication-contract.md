@@ -50,6 +50,15 @@ scenario, and the distinction between language guarantees and JVM implementation
 Each concept records the corresponding publication attestation. In particular, the lessons
 do not claim a guaranteed zero/null result from reading a property before initialization.
 
+The type-system/null-safety group for issue #20 expands the existing
+`java-developer-foundations` path in place so saved group progress and the permanent
+`platform-types` identity survive the curriculum expansion. The previously verified nullable,
+platform-type, and not-null-assertion lessons retain their human attestations. New smart-cast,
+`Any`, `Unit`, and `Nothing` lessons and the expanded group scenario remain review-ready until a
+human approves their pedagogy, sources, interview rubrics, and Kotlin 2.4 wording. Preview mode is
+therefore the review surface for the complete seven-concept group; production withholds its
+group scenario until every path concept is verified.
+
 ## Verification
 
 Run the complete local release gate from the repository root:
