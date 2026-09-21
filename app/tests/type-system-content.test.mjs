@@ -11,6 +11,7 @@ const sources = readContentSources({
   manifestPath: path.join(repositoryDirectory, 'content/curriculum.json'),
   conceptsDirectory: path.join(repositoryDirectory, 'content/concepts')
 });
+const preview = buildContentModel(sources, { publicationMode: 'preview' });
 
 const expectedConceptIds = [
   'nullable-types',
@@ -23,7 +24,6 @@ const expectedConceptIds = [
 ];
 
 test('the complete type-system group is reviewable without duplicating existing concept identities', () => {
-  const preview = buildContentModel(sources, { publicationMode: 'preview' });
   const group = preview.studyPaths.find(({ id }) => id === 'java-developer-foundations');
 
   assert.equal(group.name, 'Kotlin type system and null safety');
@@ -48,7 +48,6 @@ test('the complete type-system group is reviewable without duplicating existing 
 });
 
 test('relationships separate language prerequisites from Java-boundary associations', () => {
-  const preview = buildContentModel(sources, { publicationMode: 'preview' });
   const concepts = new Map(preview.concepts.map((concept) => [concept.id, concept]));
 
   assert.deepEqual(concepts.get('smart-casts').relationships.prerequisites, ['nullable-types']);
@@ -69,7 +68,6 @@ test('Kotlin 2.4 changes and the required safe and unsafe behaviors are explicit
     'annotation use-site targets'
   ]) assert.match(authoredText, new RegExp(claim, 'i'));
 
-  const preview = buildContentModel(sources, { publicationMode: 'preview' });
   const blocks = preview.concepts.flatMap(({ lesson }) => lesson.codeBlocks);
   const ids = new Set(blocks.map(({ verificationAttributes }) => verificationAttributes.id).filter(Boolean));
   for (const id of [
@@ -78,6 +76,7 @@ test('Kotlin 2.4 changes and the required safe and unsafe behaviors are explicit
     'type-top-any',
     'type-unit-value',
     'type-nothing-flow',
+    'nullable-unsafe-runtime',
     'type-system-boundary'
   ]) assert.ok(ids.has(id), `missing verified example ${id}`);
 

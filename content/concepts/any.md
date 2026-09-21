@@ -45,7 +45,7 @@ fun inspect(value: Any?): String = when (value) {
     else -> value::class.simpleName ?: "unknown"
 }
 
-fun main() = println("${inspect("Ada")}|${inspect(null)}")
+fun main() = println("${inspect("Ada")}|${inspect(null)}") // String:3|null
 ```
 
 ## Java comparison

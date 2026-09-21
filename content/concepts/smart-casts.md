@@ -42,7 +42,7 @@ fun describe(value: Any?): String {
     return "${value.length}:${value.uppercase()}"
 }
 
-fun main() = println("${describe("Ada")}|${describe(null)}")
+fun main() = println("${describe("Ada")}|${describe(null)}") // 3:ADA|not-text
 ```
 
 This example is expected not to compile. `nickname` is mutable, so another read may call a getter that returns a different value.

@@ -1,27 +1,13 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import { chromium } from 'playwright';
-import { preview } from 'vite';
 
-const server = await preview({
-  mode: 'curriculum-preview',
-  preview: { host: '127.0.0.1', port: 5199, strictPort: true, open: false }
-});
-let browser;
-try {
-  const launchOptions = { headless: true };
-  if (fs.existsSync('/usr/bin/chromium')) launchOptions.executablePath = '/usr/bin/chromium';
-  browser = await chromium.launch(launchOptions);
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  page.setDefaultTimeout(10000);
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  const baseUrl = 'http://127.0.0.1:5199/';
+import { LESSON_SECTIONS } from '../src/lessonSections.mjs';
+import { withCurriculumPreview } from './preview-browser.mjs';
 
+await withCurriculumPreview(5199, async ({ page, errors, baseUrl }) => {
   await page.goto(`${baseUrl}#initialization`);
   const lesson = page.getByRole('complementary', { name: 'Initialization order and safe construction concept' });
   await lesson.getByRole('button', { name: 'Study this concept' }).click();
-  for (const name of ['Mental model', 'Semantics', 'Example', 'Java comparison', 'Common mistakes', 'Decision guidance', 'Knowledge check', 'Connections']) {
+  for (const [, name] of LESSON_SECTIONS) {
     await lesson.getByRole('heading', { name, exact: true }).waitFor();
   }
   await lesson.getByText('This repaired design traces', { exact: false }).waitFor();
@@ -56,7 +42,4 @@ try {
   assert.deepEqual(progress.assessments, {});
   assert.deepEqual(errors, []);
   console.log('Core semantics preview: lesson sections, adjacent code prose, syntax search, staged scenario, and independent durable progress passed.');
-} finally {
-  await browser?.close();
-  await new Promise((resolve) => server.httpServer.close(resolve));
-}
+});

@@ -46,7 +46,23 @@ fun label(value: Any?): String = when (value) {
 
 fun main() {
     val failure = try { label(7) } catch (error: IllegalArgumentException) { error.message }
-    println("${label(null)}|${label(" Ada ")}|$failure")
+    println("${label(null)}|${label(" Ada ")}|$failure") // Anonymous|Ada|invalid:Int
+}
+```
+
+The not-null assertion is executable but intentionally unsafe when its invariant is false. This
+fixture catches the failure only so the release gate can assert the runtime behavior.
+
+```kotlin run id=nullable-unsafe-runtime file=NullableUnsafeRuntime.kt main=NullableUnsafeRuntimeKt expected=NullPointerException
+fun main() {
+    val missing: String? = null
+    val outcome = try {
+        missing!!.length
+        "unexpected"
+    } catch (_: NullPointerException) {
+        "NullPointerException"
+    }
+    println(outcome) // NullPointerException
 }
 ```
 
@@ -54,7 +70,7 @@ fun main() {
 
 This complete example makes one observation of the unannotated Java result, normalizes it to `Any?`, refines it with stable checks, returns a deliberate fallback, and rejects a wrong runtime type. The `Unit` audit result is intentionally ignored; no branch uses `!!`.
 
-```java run id=type-system-boundary file=LegacyCustomerApi.java main=TypeSystemBoundaryKt expected=Ada|Anonymous|Anonymous|invalid:Int order=java-first
+```java run id=type-system-boundary file=LegacyCustomerApi.java main=TypeSystemBoundaryKt expected=Ada|Anonymous|Anonymous|invalid:Int|platform-null order=java-first
 public final class LegacyCustomerApi {
     public static Object lookup(String id) {
         return switch (id) {
@@ -67,7 +83,7 @@ public final class LegacyCustomerApi {
 }
 ```
 
-```kotlin run id=type-system-boundary file=TypeSystemBoundary.kt main=TypeSystemBoundaryKt expected=Ada|Anonymous|Anonymous|invalid:Int order=java-first
+```kotlin run id=type-system-boundary file=TypeSystemBoundary.kt main=TypeSystemBoundaryKt expected=Ada|Anonymous|Anonymous|invalid:Int|platform-null order=java-first
 fun rejectBoundary(value: Any?): Nothing =
     throw IllegalArgumentException("invalid:${value?.let { it::class.simpleName }}")
 
@@ -88,9 +104,17 @@ fun displayName(id: String): String {
     return label
 }
 
+fun unsafeDisplayName(id: String): Any = LegacyCustomerApi.lookup(id)
+
 fun main() {
     val invalid = try { displayName("wrong") } catch (error: IllegalArgumentException) { error.message }
-    println("${displayName("name")}|${displayName("missing")}|${displayName("blank")}|$invalid")
+    val platformFailure = try {
+        unsafeDisplayName("missing")
+        "unexpected"
+    } catch (_: NullPointerException) {
+        "platform-null"
+    }
+    println("${displayName("name")}|${displayName("missing")}|${displayName("blank")}|$invalid|$platformFailure") // Ada|Anonymous|Anonymous|invalid:Int|platform-null
 }
 ```
 

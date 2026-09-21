@@ -44,7 +44,7 @@ fun <T> twice(action: () -> T): Pair<T, T> = action() to action()
 fun main() {
     val log = mutableListOf<String>()
     val results: Pair<Unit, Unit> = twice { record(log, "saved") }
-    println("${log.size}:${results.first === Unit}")
+    println("${log.size}:${results.first === Unit}") // 2:true
 }
 ```
 
