@@ -1,3 +1,5 @@
+import { LESSON_SECTIONS } from '../src/lessonSections.mjs';
+
 export function renderGeneratedArtifacts(data) {
   const baseUrl = 'https://kamil-kazmierczak.github.io/kotlin-jargon';
   const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
@@ -9,8 +11,7 @@ export function renderGeneratedArtifacts(data) {
     text: [
       concept.lesson.overview,
       concept.lesson.javaDeveloperRelevance,
-      concept.lesson.semantics,
-      concept.lesson.connections
+      ...LESSON_SECTIONS.map(([key]) => concept.lesson[key]).filter(Boolean)
     ].join('\n')
   }));
   const fullText = data.concepts.map((concept) => `## ${concept.title}
@@ -28,13 +29,9 @@ ${concept.lesson.overview}
 
 ${concept.lesson.javaDeveloperRelevance}
 
-### Semantics
+${LESSON_SECTIONS.filter(([key]) => concept.lesson[key]).map(([key, title]) => `### ${title}\n\n${concept.lesson[key]}`).join('\n\n')}
 
-${concept.lesson.semantics}
-
-### Example
-
-${concept.lesson.example}
+${concept.interview ? Object.entries(concept.interview).map(([key, content]) => `### Interview: ${key}\n\n${content}`).join('\n\n') : ''}
 
 ### Sources
 

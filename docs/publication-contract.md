@@ -26,6 +26,29 @@ Production generation includes only `verified` concepts. Drafts and review-ready
 inspected with the explicitly separate `npm --prefix app run generate:preview` command, which
 writes ignored output under `app/.preview`.
 
+Empty unpublished study paths are omitted from production. A group scenario is included only
+when all concepts on its path are published, so a partially reviewed group cannot expose its
+unreviewed assessment. Review the manifest's scenario together with its lessons.
+
+## Lesson profiles and path placement
+
+Both profiles require Overview, Why it matters to Java developers, Semantics, Example,
+Connections, and Sources. `profile: substantial` additionally requires Mental model, Common
+mistakes, Decision guidance, Knowledge check, and the five interview sections: Interview
+question, Essential points, Trade-offs, Common traps, and Follow-up probes. Java comparison is
+optional when it adds no new information. These sections appear in the reader and generated
+reference; example prose stays beside its code blocks.
+
+A verified concept normally belongs to a study path. A `depth: reference` concept may stay
+off every path with a nonempty `pathExclusionReason`. It remains available in graph, search,
+lessons, and assessment. This keeps syntax reminders from becoming mandatory study steps.
+
+The execution/core-semantics group for issue #19 contains nine path concepts plus the off-path
+Basic Kotlin syntax reference. Its `review-ready` sources await human approval of pedagogy,
+source support, all interview rubrics, the staged cache-policy scenario, and the distinction
+between language guarantees and JVM implementation observations. In particular, the lessons
+do not claim a guaranteed zero/null result from reading a property before initialization.
+
 ## Verification
 
 Run the complete local release gate from the repository root:

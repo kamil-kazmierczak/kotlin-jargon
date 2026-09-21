@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { LESSON_SECTIONS } from '../src/lessonSections.mjs';
 
 const COMPACT_SECTIONS = [
   'Overview',
@@ -7,6 +8,11 @@ const COMPACT_SECTIONS = [
   'Example',
   'Connections',
   'Sources'
+];
+const SUBSTANTIAL_SECTIONS = [
+  ...COMPACT_SECTIONS, 'Mental model', 'Common mistakes', 'Decision guidance',
+  'Knowledge check', 'Interview question', 'Essential points', 'Trade-offs',
+  'Common traps', 'Follow-up probes'
 ];
 const DEPTHS = new Set(['core', 'deep-dive', 'reference']);
 const PUBLICATION_STATUSES = new Set(['draft', 'review-ready', 'verified']);
@@ -26,9 +32,7 @@ const VERIFICATION_MODES = new Set(['compile', 'run', 'compile-fails', 'fragment
 const SECTION_KEYS = {
   'Overview': 'overview',
   'Why it matters to Java developers': 'javaDeveloperRelevance',
-  'Semantics': 'semantics',
-  'Example': 'example',
-  'Connections': 'connections',
+  ...Object.fromEntries(LESSON_SECTIONS.map(([key, heading]) => [heading, key])),
   'Sources': 'sources',
   'Interview question': 'interviewQuestion',
   'Essential points': 'essentialPoints',
@@ -301,13 +305,13 @@ function validateConceptShape(concept, manifest, issues) {
   if (metadata.id && !ID_PATTERN.test(metadata.id)) {
     issues.push(`${filePath}: concept ID "${metadata.id}" must be a lowercase kebab-case permanent ID`);
   }
-  if (metadata.profile !== 'compact') {
+  if (!['compact', 'substantial'].includes(metadata.profile)) {
     issues.push(`${filePath}: unsupported lesson profile "${metadata.profile}"`);
   }
-  if (metadata.profile === 'compact') {
-    for (const heading of COMPACT_SECTIONS) {
-      if (!sectionHeadings.has(heading)) {
-        issues.push(`${filePath}: missing required compact section "${heading}"`);
+  if (['compact', 'substantial'].includes(metadata.profile)) {
+    for (const heading of metadata.profile === 'compact' ? COMPACT_SECTIONS : SUBSTANTIAL_SECTIONS) {
+      if (!sectionHeadings.has(heading) || !concept.sections[SECTION_KEYS[heading]]) {
+        issues.push(`${filePath}: missing required ${metadata.profile} section "${heading}"`);
       }
     }
   }
@@ -429,7 +433,9 @@ function validateGraph(concepts, manifest, issues) {
 
   const pathConceptIds = new Set((manifest.studyPaths || []).flatMap(({ conceptIds = [] }) => conceptIds));
   for (const concept of concepts) {
-    if (concept.metadata.publicationStatus === 'verified' && !pathConceptIds.has(concept.metadata.id)) {
+    const justifiedReference = concept.metadata.depth === 'reference' &&
+      typeof concept.metadata.pathExclusionReason === 'string' && concept.metadata.pathExclusionReason.trim();
+    if (concept.metadata.publicationStatus === 'verified' && !pathConceptIds.has(concept.metadata.id) && !justifiedReference) {
       issues.push(`${concept.filePath}: verified concept "${concept.metadata.id}" is missing from every study path`);
     }
   }
@@ -497,10 +503,15 @@ export function buildContentModel({ manifest, conceptSources }, { publicationMod
     ? concepts
     : concepts.filter(({ metadata }) => metadata.publicationStatus === 'verified');
   const publishedIds = new Set(publishedConcepts.map(({ metadata }) => metadata.id));
-  const generatedStudyPaths = (manifest.studyPaths || []).map((studyPath) => ({
-    ...studyPath,
-    conceptIds: studyPath.conceptIds.filter((conceptId) => publishedIds.has(conceptId))
-  }));
+  const generatedStudyPaths = (manifest.studyPaths || []).map((studyPath) => {
+    const { scenario, ...group } = studyPath;
+    const conceptIds = group.conceptIds.filter((conceptId) => publishedIds.has(conceptId));
+    return {
+      ...group,
+      conceptIds,
+      ...(scenario && conceptIds.length === group.conceptIds.length ? { scenario } : {})
+    };
+  }).filter(({ conceptIds }) => conceptIds.length > 0);
   const relatedEdges = new Map();
   const prerequisiteLinks = [];
 
@@ -538,9 +549,9 @@ export function buildContentModel({ manifest, conceptSources }, { publicationMod
     lesson: {
       overview: concept.sections.overview,
       javaDeveloperRelevance: concept.sections.javaDeveloperRelevance,
-      semantics: concept.sections.semantics,
-      example: concept.sections.example,
-      connections: concept.sections.connections,
+      ...Object.fromEntries(LESSON_SECTIONS
+        .filter(([key]) => concept.sections[key])
+        .map(([key]) => [key, concept.sections[key]])),
       codeBlocks: concept.codeBlocks
     },
     ...(concept.sections.interviewQuestion

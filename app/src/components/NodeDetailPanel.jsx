@@ -3,6 +3,7 @@ import { BookOpen, Check, ExternalLink, Link2, X } from 'lucide-react';
 import { marked } from 'marked';
 import { soundEffects } from '../utils/audio';
 import CodeBlock from './CodeBlock';
+import { LESSON_SECTIONS } from '../lessonSections.mjs';
 
 marked.use({ gfm: true, breaks: true });
 
@@ -14,6 +15,15 @@ function Markdown({ children }) {
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
+}
+
+function LessonMarkdown({ content, isDark, soundEnabled }) {
+  return content.split(/(```[^\n]*\n[\s\S]*?```)/g).filter(Boolean).map((part, index) => {
+    const fence = part.match(/^```(\w+)[^\n]*\n([\s\S]*?)```$/);
+    return fence
+      ? <CodeBlock key={index} language={fence[1]} code={fence[2]} isDark={isDark} soundEnabled={soundEnabled} showLineNumbers />
+      : <Markdown key={index}>{part}</Markdown>;
+  });
 }
 
 function formatDepth(depth) {
@@ -134,27 +144,12 @@ export default function NodeDetailPanel({
         </section>
 
         <section id="lesson-start" className="space-y-5 scroll-mt-4">
-          <div>
-            <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Semantics</h3>
-            <Markdown>{concept.lesson.semantics}</Markdown>
-          </div>
-          <div>
-            <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Example</h3>
-            {concept.lesson.codeBlocks.map((block, index) => (
-              <CodeBlock
-                key={`${block.language}-${index}`}
-                code={block.code}
-                language={block.language}
-                isDark={isDark}
-                soundEnabled={soundEnabled}
-                showLineNumbers={true}
-              />
-            ))}
-          </div>
-          <div>
-            <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Connections</h3>
-            <Markdown>{concept.lesson.connections}</Markdown>
-          </div>
+          {LESSON_SECTIONS.filter(([key]) => concept.lesson[key]).map(([key, title]) => (
+            <div key={key}>
+              <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">{title}</h3>
+              <LessonMarkdown content={concept.lesson[key]} isDark={isDark} soundEnabled={soundEnabled} />
+            </div>
+          ))}
           {concept.interview && !interviewReached && (
             <button
               type="button"

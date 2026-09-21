@@ -27,6 +27,13 @@
   ],
   "categories": [
     {
+      "id": "execution-semantics",
+      "name": "Execution and core semantics",
+      "description": "How Kotlin/JVM executes and how its core contracts differ from Java.",
+      "color": "#b45309",
+      "symbol": "K"
+    },
+    {
       "id": "type-system",
       "name": "Type system",
       "description": "Kotlin types, null safety, and the values that make invalid states explicit.",
@@ -42,6 +49,67 @@
     }
   ],
   "studyPaths": [
+    {
+      "id": "kotlin-execution-core-semantics",
+      "name": "Kotlin execution and core semantics",
+      "description": "The first complete group: JVM API shape, properties, control flow, functions, classes, construction, visibility, equality, and safe initialization. Basic syntax stays searchable off the path.",
+      "conceptIds": [
+        "jvm-execution",
+        "declarations-properties",
+        "expressions-control-flow",
+        "functions",
+        "classes-inheritance",
+        "constructors",
+        "visibility",
+        "equality",
+        "initialization"
+      ],
+      "scenario": {
+        "title": "Review a Kotlin cache policy for Java callers",
+        "context": "A Java service calls a Kotlin cache policy. The complete Policy.kt and PolicyClient.java example is in Initialization order and safe construction. Start with a Policy whose base constructor records base and whose init block records init. Its final title is ready. Two separately allocated RequestKey values both have primary-constructor id 7; their body property notes differ.",
+        "stages": [
+          {
+            "id": "trace-construction",
+            "kind": "Prediction",
+            "prompt": "The safe BasePolicy receives title directly as a constructor argument. Predict the trace after constructing Policy. A proposed rewrite makes title open and reads it through an override in the base init block: can you promise that this reads ready?",
+            "feedback": "Safe construction records base,init. The proposed virtual read can reach derived state before it is initialized. The Kotlin specification makes an early property read unspecified; a particular JVM zero/null observation is not a portable guarantee. Pass the needed input directly and keep construction-time behavior final.",
+            "nextConstraint": "Construction is now safe. The cache compares the two RequestKey instances with ==; note remains a body property."
+          },
+          {
+            "id": "choose-equality",
+            "kind": "Diagnosis",
+            "prompt": "Predict left == right and left === right. Will different notes separate these keys? Explain the effect of moving a mutable note into the primary constructor before using the objects as hash keys.",
+            "feedback": "Equality is true because generated data-class equality uses the primary-constructor id; identity is false because these are distinct allocations. The body notes are ignored. Moving note into the constructor includes it in equality and hashCode; mutating it while used as a key can invalidate lookup assumptions.",
+            "nextConstraint": "ID-only equality is deliberate. The decision expression chooses reuse for equal keys and reload otherwise, inside try with cleanup in finally."
+          },
+          {
+            "id": "trace-control-flow",
+            "kind": "Prediction",
+            "prompt": "The try block ends with if (left == right) reuse else reload. Finally appends cleanup to the trace and ends with the string ignored. Which decision is returned, and what is the complete trace? What changes if cleanup throws?",
+            "feedback": "The decision is reuse and the trace is base,init,cleanup. A normally completing finally does not supply the try result. If cleanup throws, the function fails instead of returning reuse and can mask an earlier failure.",
+            "nextConstraint": "Java must call the top-level decide function in Policy.kt and read Policy.title through the generated API."
+          },
+          {
+            "id": "design-java-boundary",
+            "kind": "Design choice",
+            "prompt": "Name the Java entry point for decide(left, right) and the title accessor. State the expected complete output of the example, then propose tests and API constraints that preserve this behavior during a refactor.",
+            "feedback": "Java calls PolicyKt.decide(left, right) and policy.getTitle(). The verified example prints base,init,cleanup:reuse:true:false:ready. Preserve or intentionally version the facade and accessor, compile a real Java consumer, assert output, and keep equality-relevant state stable. The language-level ordering and equality contracts are distinct from the chosen JVM API shape.",
+            "nextConstraint": "Review construction, equality, control flow, and JVM exposure as one API contract before marking the group scenario-ready."
+          }
+        ],
+        "debrief": {
+          "connections": "Construction establishes the state that accessors expose; the key's equality contract chooses the control-flow branch; finally determines whether that result reaches the caller; generated facade and accessor methods define how Java reaches the Kotlin behavior.",
+          "tradeOffs": "Constructor inputs make dependencies explicit. ID-only equality intentionally ignores notes; including mutable notes broadens equality but makes hashed keys fragile. Expression form keeps the decision local, while effectful cleanup can obscure failure. Stable Java API names add compatibility obligations.",
+          "rubric": [
+            "Traces base before derived initialization and rejects constructor-time virtual reads without promising unspecified values.",
+            "Predicts value equality true and identity false, identifies excluded body properties, and explains stable hashing.",
+            "Predicts reuse after normal cleanup and explains abrupt completion from finally.",
+            "Names PolicyKt.decide and getTitle, predicts the complete output, and proposes a real Java consumer test.",
+            "Connects the decisions and distinguishes language guarantees, documented JVM API mapping, and implementation observations."
+          ]
+        }
+      }
+    },
     {
       "id": "java-developer-foundations",
       "name": "Java developer foundations",

@@ -330,6 +330,45 @@ test('rejects verified concepts omitted from every study path', () => {
   );
 });
 
+test('allows an explicitly justified reference concept outside the study path', () => {
+  const source = compactConcept.replace('depth: core', 'depth: reference\npathExclusionReason: Searchable syntax reminder for experienced Java developers.');
+  const input = {
+    manifest: { ...manifest, studyPaths: [{ ...manifest.studyPaths[0], conceptIds: [] }] },
+    conceptSources: [{ filePath: 'nullable-types.md', source }]
+  };
+  assert.deepEqual(buildContentModel(input).concepts[0].curriculum.studyPaths, []);
+  assert.throws(() => buildContentModel({ ...input, conceptSources: [{ filePath: 'nullable-types.md', source: source.replace('Searchable syntax reminder for experienced Java developers.', '" "') }] }), /missing from every study path/);
+});
+
+test('validates substantial lessons and preserves their sections in generated representations', () => {
+  const extraSections = '\n## Mental model\n\nTrack the contract.\n\n## Common mistakes\n\nDo not guess.\n\n## Decision guidance\n\nChoose an explicit policy.\n\n## Knowledge check\n\nPredict then explain.\n';
+  const source = compactConcept.replace('profile: compact', 'profile: substantial') + extraSections + interviewPractice;
+  const build = (source) => buildContentModel({ manifest, conceptSources: [{ filePath: 'nullable-types.md', source }] });
+  const model = build(source);
+  assert.equal(model.concepts[0].lesson.mentalModel, 'Track the contract.');
+  assert.equal(model.concepts[0].lesson.knowledgeCheck, 'Predict then explain.');
+  const artifacts = renderGeneratedArtifacts(model);
+  assert.match(artifacts.get('public/llms-full.txt'), /Track the contract/);
+  assert.match(artifacts.get('public/data/search-index.json'), /Choose an explicit policy/);
+  assert.throws(() => build(source.replace('## Mental model\n\nTrack the contract.', '')), /missing required substantial section "Mental model"/);
+  assert.throws(() => build(source.replace(interviewPractice, '')), /missing required substantial section "Interview question"/);
+});
+
+test('keeps unpublished groups and incomplete group scenarios out of production', () => {
+  const input = {
+    manifest: { ...manifest, studyPaths: [
+      { ...manifest.studyPaths[0], conceptIds: ['nullable-types', 'safe-calls'], scenario: stagedScenario },
+      { id: 'pending-group', name: 'Pending group', conceptIds: ['safe-calls'], scenario: stagedScenario }
+    ] },
+    conceptSources: [{ filePath: 'nullable-types.md', source: compactConcept }, { filePath: 'safe-calls.md', source: draftConcept() }]
+  };
+  const production = buildContentModel(input);
+  assert.equal(production.studyPaths.length, 1);
+  assert.equal(production.studyPaths[0].scenario, undefined);
+  const preview = buildContentModel(input, { publicationMode: 'preview' });
+  assert.deepEqual(preview.studyPaths[1].scenario, stagedScenario);
+});
+
 test('rejects production lesson links that resolve only in preview mode', () => {
   const draft = draftConcept();
   const verified = compactConcept.replace(

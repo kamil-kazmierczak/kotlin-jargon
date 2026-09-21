@@ -26,6 +26,11 @@ The canonical authored content lives in `content/concepts/`, while `content/curr
 
 See [`docs/publication-contract.md`](../docs/publication-contract.md) for the human-review fields, publication transitions, preview isolation, generated representations, and baseline-upgrade checks enforced by `npm run verify`.
 
+For human review of unpublished content, run `npm run dev:preview` from `app/`.
+This explicitly selects the preview dataset and exports; normal development and builds still
+use only verified content. `npm run test:preview` builds into `.preview/dist` and checks the
+execution/core-semantics group in the browser without altering the production build.
+
 ## Agent & LLM discovery
 
 Every concept, type signature, and code example is exposed in standardized format for AI agents and LLMs.
