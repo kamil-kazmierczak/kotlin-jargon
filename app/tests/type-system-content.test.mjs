@@ -36,7 +36,7 @@ test('the complete type-system group is reviewable without duplicating existing 
   for (const id of ['smart-casts', 'any', 'unit', 'nothing']) {
     const concept = concepts.get(id);
     assert.equal(concept.profile, 'substantial');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.ok(concept.lesson.decisionGuidance);
     assert.ok(concept.lesson.knowledgeCheck);
     assert.ok(concept.interview.question);
