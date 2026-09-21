@@ -4,10 +4,19 @@ title: Function declarations and defaults
 profile: substantial
 category: execution-semantics
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-21
 baseline: kotlin-jvm-2026-09
-verifiedAt: 2026-09-20
+verifiedAt: 2026-09-21
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-21
+reviewReference: commit:99383c5
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [expressions-control-flow]
 relatedIds: [jvm-execution, constructors]
 aliases: [fun, named arguments, default arguments, expression body, Unit]

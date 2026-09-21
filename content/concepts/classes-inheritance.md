@@ -4,10 +4,19 @@ title: Classes and inheritance
 profile: substantial
 category: execution-semantics
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-21
 baseline: kotlin-jvm-2026-09
-verifiedAt: 2026-09-20
+verifiedAt: 2026-09-21
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-21
+reviewReference: commit:99383c5
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [functions]
 relatedIds: [initialization, equality, visibility]
 aliases: [open, final, override, abstract, virtual dispatch]

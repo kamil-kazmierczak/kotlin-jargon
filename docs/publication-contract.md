@@ -44,9 +44,10 @@ off every path with a nonempty `pathExclusionReason`. It remains available in gr
 lessons, and assessment. This keeps syntax reminders from becoming mandatory study steps.
 
 The execution/core-semantics group for issue #19 contains nine path concepts plus the off-path
-Basic Kotlin syntax reference. Its `review-ready` sources await human approval of pedagogy,
-source support, all interview rubrics, the staged cache-policy scenario, and the distinction
-between language guarantees and JVM implementation observations. In particular, the lessons
+Basic Kotlin syntax reference. Kamil approved the curriculum authored in commit `99383c5`
+on 2026-09-21, confirming pedagogy, source support, all interview rubrics, the staged cache-policy
+scenario, and the distinction between language guarantees and JVM implementation observations.
+Each concept records the corresponding publication attestation. In particular, the lessons
 do not claim a guaranteed zero/null result from reading a property before initialization.
 
 ## Verification
