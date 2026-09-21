@@ -61,9 +61,9 @@ retain their earlier human attestations.
 The domain-modeling group for issue #21 uses six semantic decision nodes rather than one node per
 syntax form: closed domain models compare sealed hierarchies with enums, and objects are taught
 with companions and their JVM API shape. Data classes, value classes, delegation, and immutability
-complete the path. The group remains `review-ready` and preview-only until a human reviewer approves
-the pedagogy, authoritative sources, interview realism, scenario, and guarantee-versus-generated-
-implementation wording through the two-commit attestation handshake above.
+complete the path. Kamil approved the curriculum authored in commit `bac7636` on 2026-09-21,
+confirming its pedagogy, authoritative sources, interview realism, staged order-model scenario,
+and guarantee-versus-generated-implementation wording.
 
 ## Verification
 

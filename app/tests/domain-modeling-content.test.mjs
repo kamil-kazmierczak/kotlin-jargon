@@ -34,7 +34,7 @@ test('the domain-modeling group uses semantic decision boundaries and follows th
   for (const id of expectedConceptIds) {
     const concept = concepts.get(id);
     assert.equal(concept.profile, 'substantial');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.curriculum.categoryId, 'domain-modeling');
     assert.ok(concept.lesson.decisionGuidance);
     assert.ok(concept.lesson.knowledgeCheck);
