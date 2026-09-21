@@ -46,6 +46,13 @@
       "description": "Kotlin boundaries with Java APIs, types, and nullability contracts.",
       "color": "#0f766e",
       "symbol": "J"
+    },
+    {
+      "id": "domain-modeling",
+      "name": "Domain modeling",
+      "description": "Semantic choices for Kotlin values, closed states, representation, composition, and stable invariants.",
+      "color": "#be185d",
+      "symbol": "D"
     }
   ],
   "studyPaths": [
@@ -165,6 +172,64 @@
             "Explains why Nothing composes with a String result and why Unit represents the completed audit effect.",
             "Chooses safe calls, Elvis, or explicit checks according to the policy and rejects unjustified !! usage.",
             "Tests every boundary outcome and labels Kotlin 2.4-specific Java interoperability behavior instead of presenting it as timeless."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-domain-modeling",
+      "name": "Kotlin domain modeling",
+      "description": "Choose deliberately among Kotlin's data, closed-state, singleton, wrapper, delegation, and immutability constructs while preserving a usable JVM API.",
+      "conceptIds": [
+        "data-classes",
+        "closed-domain-models",
+        "objects-and-companions",
+        "value-classes",
+        "delegation",
+        "immutability"
+      ],
+      "scenario": {
+        "title": "Design a durable order model for Kotlin and Java",
+        "context": "A Kotlin order library serves Kotlin code and a Java checkout service. Orders need validated IDs, draft/submitted/rejected states with different payloads, a small priority classification, snapshot tags, a replaceable currency policy, and a Java-friendly factory. The complete runnable mixed Kotlin/Java model is in Immutability, aliases, and stable invariants.",
+        "stages": [
+          {
+            "id": "choose-value-boundaries",
+            "kind": "Modeling choice",
+            "prompt": "Choose representations for OrderId and Order itself. Which properties define order equality, what does copy promise, and where could boxing or Java interop change the runtime shape?",
+            "feedback": "Use a value class when the single String ID invariant and Kotlin type distinction justify its representation caveats. Use a data class only if its primary-constructor properties honestly define order value equality. Its copy is shallow; broad, nullable, interface, and generic value-class uses can box, and Java-facing value-class APIs require separate design.",
+            "nextConstraint": "An order can be draft, submitted with a total, or rejected with a reason. Priority is standard or express and carries no per-order payload."
+          },
+          {
+            "id": "close-state-space",
+            "kind": "Design choice",
+            "prompt": "Choose between enums, nullable fields, and a sealed hierarchy for state and priority. Show how a consumer gets exhaustiveness feedback when a new order state is added.",
+            "feedback": "Use sealed payload variants for the order state so invalid field combinations are unrepresentable, and an enum for the fixed singleton priority values. An exhaustive subject-based when without else forces compiled consumers to handle a new relevant variant.",
+            "nextConstraint": "Construction must accept caller-owned mutable tags, expose no mutation path, and provide a Java-friendly create or submit entry point."
+          },
+          {
+            "id": "protect-and-expose",
+            "kind": "Boundary review",
+            "prompt": "Design tag ownership and the companion factory. Explain why val plus List is insufficient by itself and name the Java call with and without @JvmStatic.",
+            "feedback": "Use an ordinary class with a private constructor and store an unmodifiable snapshot; a data class would expose a generated copy path that accepts another arbitrary List. val prevents reassignment and Kotlin List removes writes through that view but neither alone revokes aliases or prevents Java from calling mutators on a mutable implementation. The mixed example tests both the retained input and Java getter. A String-taking @JvmStatic bridge permits Order.submit without exposing the mangled value-class signature.",
+            "nextConstraint": "Checkout needs a default USD policy, but tests and other regions must substitute another implementation without inheritance or global mutation."
+          },
+          {
+            "id": "compose-and-defend",
+            "kind": "Design review",
+            "prompt": "Choose an object and delegation design for currency policy, then defend the complete model against identity, copying, boxing, initialization, exhaustiveness, and Java API regressions.",
+            "feedback": "A stateless object can provide the default strategy, while a checkout wrapper uses interface delegation and overrides only policy it owns. Test generated data-class equality and shallow-copy assumptions, exhaustive state handling, value-class boxing boundaries, object and companion initialization expectations, mutable-input snapshots, and the real Java factory call.",
+            "nextConstraint": "Review the closed state space, ownership boundaries, generated members, representation choices, and JVM surface as one evolving domain contract before marking the scenario-ready state."
+          }
+        ],
+        "debrief": {
+          "connections": "The closed state space determines exhaustive behavior; primary-constructor properties determine generated equality and shallow copy; the value class separates IDs while introducing boxing and JVM-boundary choices; snapshots protect immutability; objects provide singleton strategies; delegation composes policy; and companion annotations determine the Java call shape.",
+          "tradeOffs": "Stronger types and closed variants reject invalid states but increase migration coordination. Generated members reduce boilerplate while making constructor membership contractual. Snapshots allocate to clarify ownership. Static bridges improve Java ergonomics while enlarging the binary API. Delegation reduces forwarding code but requires deliberate interception boundaries.",
+          "rubric": [
+            "Chooses data or ordinary classes from equality, identity, and copying semantics rather than brevity.",
+            "Separates enum singleton choices from sealed payload variants and preserves exhaustive maintenance feedback.",
+            "Explains value-class boxing and Java-facing shape without promising universal allocation removal.",
+            "Distinguishes val, read-only views, and immutable snapshots and identifies shallow-copy aliases.",
+            "Uses objects, companions, and delegation with explicit initialization, interception, and Java API tests."
           ]
         }
       }

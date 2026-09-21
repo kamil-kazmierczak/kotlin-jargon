@@ -58,6 +58,13 @@ their sources and interview rubrics, the uncertain-Java-boundary scenario, and i
 version wording. The previously verified nullable, platform-type, and not-null-assertion lessons
 retain their earlier human attestations.
 
+The domain-modeling group for issue #21 uses six semantic decision nodes rather than one node per
+syntax form: closed domain models compare sealed hierarchies with enums, and objects are taught
+with companions and their JVM API shape. Data classes, value classes, delegation, and immutability
+complete the path. The group remains `review-ready` and preview-only until a human reviewer approves
+the pedagogy, authoritative sources, interview realism, scenario, and guarantee-versus-generated-
+implementation wording through the two-commit attestation handshake above.
+
 ## Verification
 
 Run the complete local release gate from the repository root:
