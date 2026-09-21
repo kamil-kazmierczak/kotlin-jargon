@@ -52,12 +52,11 @@ do not claim a guaranteed zero/null result from reading a property before initia
 
 The type-system/null-safety group for issue #20 expands the existing
 `java-developer-foundations` path in place so saved group progress and the permanent
-`platform-types` identity survive the curriculum expansion. The previously verified nullable,
-platform-type, and not-null-assertion lessons retain their human attestations. New smart-cast,
-`Any`, `Unit`, and `Nothing` lessons and the expanded group scenario remain review-ready until a
-human approves their pedagogy, sources, interview rubrics, and Kotlin 2.4 wording. Preview mode is
-therefore the review surface for the complete seven-concept group; production withholds its
-group scenario until every path concept is verified.
+`platform-types` identity survive the curriculum expansion. Kamil approved the curriculum in
+commit `673e2d3` on 2026-09-21, confirming the smart-cast, `Any`, `Unit`, and `Nothing` lessons,
+their sources and interview rubrics, the uncertain-Java-boundary scenario, and its Kotlin 2.4
+version wording. The previously verified nullable, platform-type, and not-null-assertion lessons
+retain their earlier human attestations.
 
 ## Verification
 

@@ -4,9 +4,19 @@ title: Nothing and non-returning control flow
 profile: substantial
 category: type-system
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-21
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-21
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-21
+reviewReference: commit:673e2d3
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [expressions-control-flow]
 relatedIds: [nullable-types, smart-casts, any, unit, platform-types]
 aliases: [Nothing, bottom type, never returns, throw expression, Nothing?]
