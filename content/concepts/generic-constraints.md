@@ -4,9 +4,19 @@ title: Generic constraints and useful abstractions
 profile: substantial
 category: generics-abstraction
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-22
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-22
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-22
+reviewReference: commit:240c832b6954c4253b47924c6ca15b6484678dfa
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [functions, collection-interfaces, any]
 relatedIds: [declaration-site-variance, type-projections, generic-runtime-types]
 aliases: [generic function, type parameter, upper bound, where clause, invariant generic]

@@ -20,7 +20,7 @@ const expectedConceptIds = [
   'generic-runtime-types'
 ];
 
-test('the generics group uses API-design decisions and remains human-review gated', () => {
+test('the generics group uses API-design decisions and records human verification', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-generics-abstraction');
 
   assert.equal(group.name, 'Kotlin generics and abstraction');
@@ -32,7 +32,7 @@ test('the generics group uses API-design decisions and remains human-review gate
   for (const id of expectedConceptIds) {
     const concept = concepts.get(id);
     assert.equal(concept.profile, 'substantial');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.curriculum.categoryId, 'generics-abstraction');
     assert.ok(concept.lesson.decisionGuidance);
     assert.ok(concept.lesson.knowledgeCheck);
