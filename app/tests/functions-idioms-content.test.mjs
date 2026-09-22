@@ -76,6 +76,7 @@ test('checked examples cover lambda behavior, receiver resolution, scope results
     'functions-lambda-behavior',
     'functions-extension-resolution',
     'functions-receiver-resolution',
+    'functions-receiver-ambiguity',
     'functions-scope-results',
     'functions-inline-control-flow',
     'functions-reified-access',

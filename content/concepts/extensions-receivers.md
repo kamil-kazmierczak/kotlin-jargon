@@ -68,6 +68,23 @@ fun main() {
 
 The labels distinguish the extension receiver (`String`) from the dispatch receiver (`Renderer`). Receiver-heavy code that repeatedly needs such qualification may be signaling that ordinary parameters or a smaller DSL boundary would read better.
 
+```kotlin run id=functions-receiver-ambiguity file=ReceiverAmbiguity.kt main=ReceiverAmbiguityKt expected=inner:extension:dispatch
+class Envelope(val label: String)
+
+class Printer(private val label: String) {
+    fun Envelope.describe(): String = with(Envelope("inner")) {
+        "$label:${this@describe.label}:${this@Printer.label}"
+    }
+}
+
+fun main() {
+    println(with(Printer("dispatch")) { Envelope("extension").describe() })
+    // inner:extension:dispatch
+}
+```
+
+The unqualified `label` comes from the innermost `with` receiver, not from the extension receiver or `Printer`. Labels make this small example deterministic, but three same-shaped implicit receivers make the original design hard to defend; named parameters and locals would usually communicate the roles better.
+
 ## Java comparison
 
 A top-level extension has utility-method semantics even though Kotlin supplies member-like syntax. Java calls the generated static function through its file facade unless the API deliberately controls that facade. It cannot override an existing class member, access private receiver state, or participate in the class's virtual dispatch table.
