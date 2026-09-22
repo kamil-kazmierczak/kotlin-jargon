@@ -4,9 +4,19 @@ title: Lambdas and higher-order API contracts
 profile: substantial
 category: functions-idioms
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-22
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-22
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-22
+reviewReference: commit:a406f11e7b325dbf4ff46e6bb8550b438f1bd956
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [functions, collection-transformations]
 relatedIds: [extensions-receivers, scope-functions, inline-reified-functions]
 aliases: [lambda, higher-order function, function type, trailing lambda, SAM conversion]

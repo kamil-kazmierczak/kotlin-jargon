@@ -20,7 +20,7 @@ const expectedConceptIds = [
   'inline-reified-functions'
 ];
 
-test('the functions and idioms group uses semantic decision nodes and awaits human verification', () => {
+test('the functions and idioms group uses semantic decision nodes and records human verification', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-functions-idioms');
 
   assert.equal(group.name, 'Kotlin functions and idioms');
@@ -32,7 +32,7 @@ test('the functions and idioms group uses semantic decision nodes and awaits hum
   for (const id of expectedConceptIds) {
     const concept = concepts.get(id);
     assert.equal(concept.profile, 'substantial');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.curriculum.categoryId, 'functions-idioms');
     assert.ok(concept.lesson.decisionGuidance);
     assert.ok(concept.lesson.knowledgeCheck);

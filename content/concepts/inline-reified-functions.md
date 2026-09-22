@@ -4,9 +4,19 @@ title: Inline control flow and reified type parameters
 profile: substantial
 category: functions-idioms
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-22
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-22
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-22
+reviewReference: commit:a406f11e7b325dbf4ff46e6bb8550b438f1bd956
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [lambdas-higher-order-functions, extensions-receivers, scope-functions]
 relatedIds: [jvm-execution, collection-transformations]
 aliases: [inline function, noinline, crossinline, non-local return, reified type parameter]

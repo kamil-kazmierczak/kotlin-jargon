@@ -75,8 +75,9 @@ interview realism, bounded-report scenario, and performance wording.
 The functions/idioms group for issue #23 uses four semantic decision nodes: lambdas and
 higher-order contracts, extensions and receiver resolution, scope-function receiver/result
 choices, and inline control flow with reified access. It distinguishes source semantics,
-compiler-emitted bytecode, runtime performance, and API constraints, and remains review-ready
-until a trusted human approves its pedagogy, sources, interview realism, scenario, and
+compiler-emitted bytecode, runtime performance, and API constraints. Kamil approved the
+curriculum authored through commit `a406f11` on 2026-09-22, confirming its pedagogy,
+authoritative sources, interview realism, readable-API scenario, and
 guarantee-versus-implementation wording.
 
 ## Verification
