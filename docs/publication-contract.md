@@ -80,6 +80,12 @@ curriculum authored through commit `a406f11` on 2026-09-22, confirming its pedag
 authoritative sources, interview realism, readable-API scenario, and
 guarantee-versus-implementation wording.
 
+The generics/abstraction group for issue #24 uses four semantic decision nodes: generic
+constraints, declaration-site variance, use-site and star projections, and erased runtime types.
+It separates compile-time substitutability, operations available through a projected reference,
+and runtime type evidence, and remains review-ready until a trusted human approves its pedagogy,
+sources, interview realism, type-safe variant scenario, and JVM-erasure wording.
+
 ## Verification
 
 Run the complete local release gate from the repository root:

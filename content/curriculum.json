@@ -67,6 +67,13 @@
       "description": "Behavior parameters, extensions, receivers, scope functions, and deliberate inline API design.",
       "color": "#c2410c",
       "symbol": "ƒ"
+    },
+    {
+      "id": "generics-abstraction",
+      "name": "Generics and abstraction",
+      "description": "Type parameters, variance, projections, erased runtime types, and type-safe generic API design.",
+      "color": "#4338ca",
+      "symbol": "T"
     }
   ],
   "studyPaths": [
@@ -356,6 +363,62 @@
             "Chooses scope functions from receiver and return-value semantics and removes them when locals are clearer.",
             "Separates inline source semantics, bytecode consequences, performance evidence, API evolution, and non-local-return constraints.",
             "Uses reified access within erasure limits, supplies a Java-facing alternative, and defends the complete API with behavioral and readability tests."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-generics-abstraction",
+      "name": "Kotlin generics and abstraction",
+      "description": "Design type-safe Kotlin APIs by separating constraints, substitutability, projected capabilities, and runtime type evidence.",
+      "conceptIds": [
+        "generic-constraints",
+        "declaration-site-variance",
+        "type-projections",
+        "generic-runtime-types"
+      ],
+      "scenario": {
+        "title": "Design and defend a type-safe variant API",
+        "context": "A message library returns either a typed success payload or a failure and must let broad consumers handle narrower payloads. One diagnostic boundary also receives values whose generic arguments are unknown at runtime. The complete runnable design is in Erased generic runtime types.",
+        "stages": [
+          {
+            "id": "constrain-operations",
+            "kind": "API contract",
+            "prompt": "Choose the type parameters and bounds for comparing and identifying messages. Which operations should the generic body be allowed to use, and why should unrelated capabilities stay out of the bound?",
+            "feedback": "Give T only the bounds required by the implementation, using a where clause when it needs both identity and comparison. A bound is a compile-time capability contract, not proof of a concrete runtime type. Extra bounds reject useful callers and couple the abstraction to operations it does not own.",
+            "nextConstraint": "A success produces its payload, a failure has no payload, and a renderer consumes values. The API must accept Result<Invoice> where Result<Any> is expected and a Renderer<Any> where Renderer<Invoice> is needed."
+          },
+          {
+            "id": "choose-variance",
+            "kind": "Substitutability design",
+            "prompt": "Place in or out on the result and renderer declarations. Explain each substitution and identify any method that would make the declaration unsafe.",
+            "feedback": "Result<out T> is covariant because clients only receive T, so Result<Invoice> is substitutable for Result<Any>. Renderer<in T> is contravariant because it only accepts T, so Renderer<Any> can render an Invoice. Adding a T-consuming method to Result or a T-producing method to Renderer violates those promises; invariance is correct when a type genuinely does both.",
+            "nextConstraint": "An invariant mutable buffer must be copied from a narrow element type into a broad one, and an inspection endpoint receives a container whose argument is unknown."
+          },
+          {
+            "id": "project-capabilities",
+            "kind": "Projection review",
+            "prompt": "Design the buffer parameters with use-site projections and explain exactly what may be read or written. Then explain what Container<*> permits without guessing its hidden argument.",
+            "feedback": "Read the source through out T and write the destination through in T. These are restricted views of invariant containers, not declarations that permanently change the container type. A star projection safely represents an unknown argument: reads use its upper bound and writes requiring that unknown type are unavailable. It resembles an unbounded Java wildcard, not an unsafe Java raw type.",
+            "nextConstraint": "Diagnostics now ask whether an arbitrary value is Result<Invoice>, while Kotlin callers want a concise typed filter and Java callers will later need a deliberate interop surface."
+          },
+          {
+            "id": "separate-runtime-evidence",
+            "kind": "Runtime diagnosis",
+            "prompt": "State which checks survive erasure, where an unchecked cast would lie, what reified T can check, and how you would test and expose the complete API across the later Java boundary.",
+            "feedback": "Runtime code may check Result<*> or List<*>, not generally Result<Invoice> or List<String>. An unchecked cast shifts responsibility to an invariant that must be validated at the boundary. Reified T can check each element against a runtime-available T at an inline call site, but nested arguments remain erased. Test covariance, contravariance, projected restrictions, star reads, failures, erased checks, and reified element checks; review generated Java wildcards separately in the interoperability group.",
+            "nextConstraint": "Review compile-time substitutability, available operations, runtime type evidence, and future Java API shape as four separate parts of the variant contract before marking the scenario-ready state."
+          }
+        ],
+        "debrief": {
+          "connections": "Generic bounds grant compile-time operations; declaration-site variance defines compile-time substitutability for producer and consumer abstractions; use-site and star projections restrict capabilities when the declaration is invariant or unknown; type erasure limits runtime questions; and reification supplies selected call-site evidence without restoring nested arguments.",
+          "tradeOffs": "Narrow bounds admit more callers but expose fewer operations. Variance improves substitution while forbidding unsafe member positions. Projections make one use safe but deliberately reduce operations. Star projections preserve uncertainty, unchecked casts hide it, and reified conveniences trade an inline Kotlin-only surface for limited runtime checks. Java wildcard shape remains a separate API review.",
+          "rubric": [
+            "Uses only necessary generic bounds and distinguishes them from runtime type evidence.",
+            "Makes the result covariant and renderer contravariant, explaining both substitutions and forbidden positions.",
+            "Uses out and in projections for a copy boundary and explains star-projected reads and prohibited writes.",
+            "Allows erased classifier checks, rejects parameterized is-checks, and scopes any unchecked cast behind validation.",
+            "Explains reified limits and defers generated Java wildcard decisions to explicit interoperability design."
           ]
         }
       }
