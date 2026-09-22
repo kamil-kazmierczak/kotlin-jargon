@@ -36,7 +36,10 @@ fun describe(value: Any): String = when (value) {
     else -> "other"
 }
 
-fun main() = println(describe(listOf("a", "b")))
+fun main() {
+    println(describe(listOf("a", "b")))
+    // list:2:String
+}
 ```
 
 The check proves only `List<*>`. Each element is `Any?`; observing that one element is a String does not prove the entire erased argument was `String`.
@@ -46,6 +49,7 @@ inline fun <reified T> Iterable<*>.allValuesAre(): Boolean = all { it is T }
 
 fun main() {
     println("${listOf("a", "b").allValuesAre<String>()}:${listOf("a", 2).allValuesAre<String>()}")
+    // true:false
 }
 ```
 
@@ -68,6 +72,7 @@ fun main() {
     val invoice: Result<Int> = Result.Success(42)
     val broadRenderer: Renderer<Any> = Renderer { "invoice:$it" }
     println("${display(invoice, broadRenderer)}|${display(Result.Failure("timeout"), broadRenderer)}")
+    // invoice:42|failed:timeout
 }
 ```
 

@@ -31,7 +31,9 @@ For `Producer<out T>`, `Producer<Invoice>` is a subtype of `Producer<Any>` when 
 ## Example
 
 ```kotlin run id=generics-variant-producer-consumer file=VariantProducerConsumer.kt main=VariantProducerConsumerKt expected=event:paid
-open class Event(val label: String)
+open class Event(val label: String) {
+    override fun toString(): String = label
+}
 class PaymentEvent(label: String) : Event(label)
 
 fun interface Producer<out T> { fun next(): T }
@@ -45,15 +47,14 @@ fun forward(source: Producer<Event>, destination: Consumer<PaymentEvent>) {
 fun main() {
     val payments: Producer<PaymentEvent> = Producer { PaymentEvent("paid") }
     val events: Producer<Event> = payments
-    val anyConsumer: Consumer<Any> = Consumer { value ->
-        println("event:${(value as Event).label}")
-    }
+    val anyConsumer: Consumer<Any> = Consumer { value -> println("event:$value") }
     val paymentConsumer: Consumer<PaymentEvent> = anyConsumer
     forward(events, paymentConsumer)
+    // event:paid
 }
 ```
 
-The producer assignment follows the type hierarchy; the consumer assignment reverses it. The cast exists only because this demonstration's deliberately broad consumer chooses to inspect `Event`; contravariance itself does not require a cast.
+The producer assignment follows the type hierarchy; the consumer assignment reverses it. The broad consumer uses only `Any.toString`, so it honors its promise to accept every value without a narrowing cast.
 
 ## Java comparison
 

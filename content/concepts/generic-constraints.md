@@ -44,6 +44,7 @@ fun <T> highest(values: List<T>): T where T : Identified, T : Comparable<T> =
 fun main() {
     val selected = highest(listOf(Ticket("OPS-2", 2), Ticket("OPS-9", 9)))
     println("${selected.id}:${selected.priority}")
+    // OPS-9:9
 }
 ```
 

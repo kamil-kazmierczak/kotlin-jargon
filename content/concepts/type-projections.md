@@ -26,7 +26,7 @@ View a projection as a capability filter placed on one reference. An `out` view 
 
 ## Semantics
 
-Invariant types such as `Array<T>` and `MutableList<T>` both produce and consume `T`. At one boundary, `Array<out T>` exposes safe reads and `Array<in T>` exposes safe writes. The compiler represents the hidden argument as a captured type and rejects operations that require knowledge the projection erased. For an invariant `Box<T : U>`, `Box<*>` reads values as `U` and accepts no non-null value as `T`; exact rules also account for declaration-site variance.
+Invariant types such as `Array<T>` and `MutableList<T>` both produce and consume `T`. At one boundary, `Array<out T>` exposes safe reads and `Array<in T>` exposes safe writes. The compiler represents the hidden argument as a captured type and rejects operations that require knowledge the projection erased. For an invariant `Box<T : U>`, `Box<*>` reads values as `U`, while members that consume `T` accept no value through that projected reference; exact rules also account for declaration-site variance.
 
 ## Example
 
@@ -40,6 +40,7 @@ fun main() {
     val values = arrayOfNulls<Any>(2)
     copy(numbers, values)
     println("${values.joinToString("|")}|ready")
+    // 1|2|ready
 }
 ```
 
@@ -66,7 +67,10 @@ fun inspect(slot: Slot<*>): String {
     return "${value::class.simpleName}:${value.toString().length}"
 }
 
-fun main() = println(inspect(Slot("api")))
+fun main() {
+    println(inspect(Slot("api")))
+    // String:3
+}
 ```
 
 `Slot<*>` safely reads the upper bound `Any`. Calling `replace` is unavailable because the hidden type might not be the type of any proposed value.
