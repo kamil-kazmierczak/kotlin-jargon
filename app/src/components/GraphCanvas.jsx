@@ -828,7 +828,7 @@ export default function GraphCanvas({
     >
       <canvas ref={canvasRef} className="block w-full h-full relative z-10" aria-hidden="true" />
 
-      <div className={`absolute top-4 left-4 z-20 max-w-xs p-3 border text-[10px] backdrop-blur-md ${isDark ? 'bg-[#1a1a19]/90 border-white/15' : 'bg-[#eaeae8]/90 border-black/15'}`}>
+      <div className={`absolute top-4 left-4 z-20 max-h-[calc(100%-6rem)] max-w-xs overflow-y-auto p-3 border text-[10px] backdrop-blur-md ${isDark ? 'bg-[#1a1a19]/90 border-white/15' : 'bg-[#eaeae8]/90 border-black/15'}`}>
         <p className="uppercase tracking-widest opacity-60 mb-2">Explore graph</p>
         <div className="flex flex-wrap gap-1 mb-2" aria-label="Curriculum depth filters">
           {['core', 'deep-dive', 'reference'].map((depth) => <button key={depth} onClick={() => onToggleFilter?.('depth', depth)} aria-pressed={filters.depths.includes(depth)} className={`px-1.5 py-1 border ${filters.depths.includes(depth) ? 'border-amber-500 text-amber-600' : 'opacity-50'}`}>{depth}</button>)}

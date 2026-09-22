@@ -65,6 +65,13 @@ complete the path. Kamil approved the curriculum authored in commit `bac7636` on
 confirming its pedagogy, authoritative sources, interview realism, staged order-model scenario,
 and guarantee-versus-generated-implementation wording.
 
+The collections/sequences group for issue #22 uses four semantic decision nodes: collection
+interfaces and ownership, materialized transformations, grouping and aggregation, and lazy
+sequence evaluation. It deliberately distinguishes read-only capabilities from deep immutability
+and sequence laziness from automatic performance improvement. The group and its bounded-report
+scenario remain `review-ready` until a human approves pedagogy, sources, interview realism, and
+performance wording through the publication handshake above.
+
 ## Verification
 
 Run the complete local release gate from the repository root:

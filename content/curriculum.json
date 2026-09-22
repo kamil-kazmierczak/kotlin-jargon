@@ -53,6 +53,13 @@
       "description": "Semantic choices for Kotlin values, closed states, representation, composition, and stable invariants.",
       "color": "#be185d",
       "symbol": "D"
+    },
+    {
+      "id": "collections",
+      "name": "Collections and sequences",
+      "description": "Ownership, transformation, aggregation, evaluation strategy, and cost for Kotlin collections and sequences.",
+      "color": "#0369a1",
+      "symbol": "C"
     }
   ],
   "studyPaths": [
@@ -230,6 +237,62 @@
             "Explains value-class boxing and Java-facing shape without promising universal allocation removal.",
             "Distinguishes val, read-only views, and immutable snapshots and identifies shallow-copy aliases.",
             "Uses objects, companions, and delegation with explicit initialization, interception, and Java API tests."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-collections-sequences",
+      "name": "Kotlin collections and sequences",
+      "description": "Choose collection capabilities, ownership, transformations, grouping, and eager or lazy evaluation from semantics and cost.",
+      "conceptIds": [
+        "collection-interfaces",
+        "collection-transformations",
+        "grouping-aggregation",
+        "sequences"
+      ],
+      "scenario": {
+        "title": "Choose a collection pipeline for a bounded report",
+        "context": "A reporting source accepts and retains a caller-owned mutable batch of immutable Sale values, then produces a report later. It must retain a stable structural snapshot, skip refunds, normalize region names, stop after three accepted sales, and return counts per region. The complete runnable example is in Sequences, evaluation, and pipeline cost.",
+        "stages": [
+          {
+            "id": "choose-ownership",
+            "kind": "Boundary choice",
+            "prompt": "The caller may mutate its MutableList after the source accepts it but before a later report runs. Is storing it as List enough? Choose between a live read-only view and a snapshot, and state what remains shared after a shallow copy.",
+            "feedback": "List restricts writes through one reference but does not revoke the caller's mutable alias. Copy when the source accepts the input because a later report requires the accepted batch to remain stable. The immutable Sale values may safely be shared; mutable elements would require a deeper ownership policy.",
+            "nextConstraint": "The snapshot may contain hundreds of thousands of sales. Enrichment is expensive, refunds do not count, and only the first three accepted sales belong in this report."
+          },
+          {
+            "id": "choose-evaluation",
+            "kind": "Pipeline choice",
+            "prompt": "Compare an eager filter/map/take chain with a sequence or explicit loop. Predict which sales the sequence example inspects and where work begins.",
+            "feedback": "The eager collection transformations complete their passes before take can limit their work. The sequence starts only at the terminal aggregation, interleaves per-element operations, and stops after the third accepted sale: it inspects four inputs because the second is refunded. A loop could express the same bound with explicit state.",
+            "nextConstraint": "The report needs counts per normalized region, not member lists, and its output order must be stable for serialization."
+          },
+          {
+            "id": "choose-aggregation",
+            "kind": "Aggregation choice",
+            "prompt": "Choose between groupBy, associateBy, and groupingBy().eachCount(). Explain retained data, duplicate regions, terminal behavior, and ordering.",
+            "feedback": "groupingBy().eachCount() retains a count per region and is terminal, so it drives the sequence. groupBy would also retain lists of sales or regions that the result does not need. associateBy would overwrite duplicate regions. Sort the result explicitly at the serialization boundary rather than relying on observed map iteration order.",
+            "nextConstraint": "A reviewer asks whether replacing the eager chain with a sequence proves the service is faster and whether the returned report can be reused safely."
+          },
+          {
+            "id": "defend-cost",
+            "kind": "Design review",
+            "prompt": "Defend the ownership and evaluation design, state what the deterministic example proves, and identify measurements or changed constraints that could favor an eager chain or loop.",
+            "feedback": "The snapshot protects structural ownership between acceptance and later reporting, and the sequence avoids processing the fifth snapshot element; the terminal count materializes a reusable map. The example proves evaluation order, inspected elements, independence from the cleared input alias, and the semantic result—not an exact allocation count or universal speedup. Small inputs, cheap operations, all-matching data, repeated consumption, or stateful sorting may favor eager collections or a loop; benchmark representative workloads.",
+            "nextConstraint": "Review ownership, shallow element sharing, eager versus lazy traversal, terminal aggregation, ordering, and measured cost as one design before marking the scenario-ready state."
+          }
+        ],
+        "debrief": {
+          "connections": "The read-only interface controls capabilities while the snapshot establishes structural ownership; transformation choice controls traversal and intermediate results; sequence demand controls evaluation order and early termination; and terminal grouping materializes the reusable report.",
+          "tradeOffs": "Copying clarifies ownership at an allocation cost. Eager operations are simple and reusable but can perform avoidable passes. Sequences may avoid work and intermediate collections but add per-element machinery and delayed execution. Direct aggregation retains less data than member groups, while explicit sorting pays for a stable external order.",
+          "rubric": [
+            "Distinguishes a read-only view from a stable snapshot and identifies shallowly shared elements.",
+            "Predicts eager operation-by-operation traversal and lazy element-by-element traversal through terminal demand.",
+            "Chooses groupingBy().eachCount() from the required result and rejects duplicate-overwriting associateBy.",
+            "Identifies the four inspected inputs, the skipped fifth input, and the explicitly sorted output without overclaiming allocation details.",
+            "Rejects automatic performance claims and names workload changes and measurements that could change the choice."
           ]
         }
       }
