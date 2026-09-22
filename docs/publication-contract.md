@@ -68,9 +68,9 @@ and guarantee-versus-generated-implementation wording.
 The collections/sequences group for issue #22 uses four semantic decision nodes: collection
 interfaces and ownership, materialized transformations, grouping and aggregation, and lazy
 sequence evaluation. It deliberately distinguishes read-only capabilities from deep immutability
-and sequence laziness from automatic performance improvement. The group and its bounded-report
-scenario remain `review-ready` until a human approves pedagogy, sources, interview realism, and
-performance wording through the publication handshake above.
+and sequence laziness from automatic performance improvement. Kamil approved the curriculum
+authored in commit `c7dd3dd` on 2026-09-22, confirming its pedagogy, authoritative sources,
+interview realism, bounded-report scenario, and performance wording.
 
 ## Verification
 

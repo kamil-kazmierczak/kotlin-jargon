@@ -4,9 +4,19 @@ title: Grouping and incremental aggregation
 profile: substantial
 category: collections
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-22
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-22
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-22
+reviewReference: commit:c7dd3dd
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [collection-transformations]
 relatedIds: [sequences, collection-interfaces]
 aliases: [groupBy, groupingBy, eachCount, fold, aggregate]

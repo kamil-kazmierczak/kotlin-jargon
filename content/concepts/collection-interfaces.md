@@ -4,9 +4,19 @@ title: Collection capabilities, ownership, and aliases
 profile: substantial
 category: collections
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-22
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-22
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-22
+reviewReference: commit:c7dd3dd
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [immutability]
 relatedIds: [collection-transformations, platform-types]
 aliases: [read-only collections, mutable collections, List, MutableList, defensive copy]

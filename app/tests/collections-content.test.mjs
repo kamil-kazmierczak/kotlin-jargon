@@ -20,7 +20,7 @@ const expectedConceptIds = [
   'sequences'
 ];
 
-test('the collections group uses semantic decision nodes and awaits human verification', () => {
+test('the collections group uses semantic decision nodes and records human verification', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-collections-sequences');
 
   assert.equal(group.name, 'Kotlin collections and sequences');
@@ -32,7 +32,7 @@ test('the collections group uses semantic decision nodes and awaits human verifi
   for (const id of expectedConceptIds) {
     const concept = concepts.get(id);
     assert.equal(concept.profile, 'substantial');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.curriculum.categoryId, 'collections');
     assert.ok(concept.lesson.decisionGuidance);
     assert.ok(concept.lesson.knowledgeCheck);
