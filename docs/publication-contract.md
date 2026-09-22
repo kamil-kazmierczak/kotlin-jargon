@@ -72,6 +72,13 @@ and sequence laziness from automatic performance improvement. Kamil approved the
 authored in commit `c7dd3dd` on 2026-09-22, confirming its pedagogy, authoritative sources,
 interview realism, bounded-report scenario, and performance wording.
 
+The functions/idioms group for issue #23 uses four semantic decision nodes: lambdas and
+higher-order contracts, extensions and receiver resolution, scope-function receiver/result
+choices, and inline control flow with reified access. It distinguishes source semantics,
+compiler-emitted bytecode, runtime performance, and API constraints, and remains review-ready
+until a trusted human approves its pedagogy, sources, interview realism, scenario, and
+guarantee-versus-implementation wording.
+
 ## Verification
 
 Run the complete local release gate from the repository root:

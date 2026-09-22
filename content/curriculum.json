@@ -60,6 +60,13 @@
       "description": "Ownership, transformation, aggregation, evaluation strategy, and cost for Kotlin collections and sequences.",
       "color": "#0369a1",
       "symbol": "C"
+    },
+    {
+      "id": "functions-idioms",
+      "name": "Functions and Kotlin idioms",
+      "description": "Behavior parameters, extensions, receivers, scope functions, and deliberate inline API design.",
+      "color": "#c2410c",
+      "symbol": "ƒ"
     }
   ],
   "studyPaths": [
@@ -293,6 +300,62 @@
             "Chooses groupingBy().eachCount() from the required result and rejects duplicate-overwriting associateBy.",
             "Identifies the four inspected inputs, the skipped fifth input, and the explicitly sorted output without overclaiming allocation details.",
             "Rejects automatic performance claims and names workload changes and measurements that could change the choice."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-functions-idioms",
+      "name": "Kotlin functions and idioms",
+      "description": "Design readable Kotlin APIs with lambdas, extensions, receivers, scope functions, and inline or reified capabilities without hiding intent.",
+      "conceptIds": [
+        "lambdas-higher-order-functions",
+        "extensions-receivers",
+        "scope-functions",
+        "inline-reified-functions"
+      ],
+      "scenario": {
+        "title": "Design and defend a readable higher-order API",
+        "context": "An event library serves Kotlin and Java applications. Callers need the first event payload of a requested runtime type and kind that satisfies a policy. The Kotlin API may use extensions, a receiver lambda, inline code, and a reified type; Java still needs an honest callable core. The complete runnable Kotlin design is in Inline control flow and reified type parameters.",
+        "stages": [
+          {
+            "id": "define-behavior-contract",
+            "kind": "API contract",
+            "prompt": "Design the predicate boundary. Should it be a plain function type, receiver function type, or named functional interface? State when and how often it runs, what happens on failure, and what Java callers need.",
+            "feedback": "A receiver predicate such as T.() -> Boolean is readable when payload members are its sole focus; an explicit (T) -> Boolean is better when the value name or additional receivers matter. The query must document encounter order, first-match termination, exception propagation, and invocation only for payloads of the requested type and kind. A Java boundary should expose a class token plus a Java-friendly functional interface or another deliberate overload rather than relying on a reified-only entry point.",
+            "nextConstraint": "Kind normalization is useful outside the query, but Event is a library model whose virtual members cannot be changed. The team proposes extension syntax."
+          },
+          {
+            "id": "place-extension-and-receivers",
+            "kind": "Resolution review",
+            "prompt": "Decide whether kind normalization and event querying deserve extensions. Explain static resolution, identify every receiver in the proposed query, and remove any receiver syntax that falsely suggests ownership or becomes ambiguous.",
+            "feedback": "A focused String.normalizedKind extension is honest because the String is the primary input and the operation needs no hidden state. An Iterable<Event> query extension can be discoverable, but remains a statically resolved helper rather than a new virtual collection member. Inside a receiver predicate, T is the lambda receiver while the iterable is the extension receiver of the outer function; name event and payload locals explicitly so those roles do not compete. Use an ordinary service when dependencies or multiple peer inputs grow.",
+            "nextConstraint": "The Kotlin call should avoid an explicit class token. A reviewer proposes inline plus reified T and says this will make the query faster."
+          },
+          {
+            "id": "separate-inline-claims",
+            "kind": "Implementation choice",
+            "prompt": "Evaluate inline and reified T. Separate source control-flow effects, emitted bytecode, performance evidence, type-erasure limits, binary/API costs, and the Java alternative.",
+            "feedback": "Inline plus reified T permits the runtime payload check without a token and may inline the predicate at Kotlin call sites. It can duplicate bytecode, couples compiled callers to public inline implementation, does not preserve arbitrary nested generic arguments, and is not automatically faster. Non-local returns are possible only for eligible inline lambda use; choose crossinline or noinline if invocation or storage requires them. Keep or expose a token-based non-inline core for Java and benchmark only if query cost matters.",
+            "nextConstraint": "An implementation chains let, run, apply, and also around the query because they are considered idiomatic, but reviewers cannot tell which value each step returns."
+          },
+          {
+            "id": "defend-readable-design",
+            "kind": "Design review",
+            "prompt": "Rewrite and defend the complete API. Explain any remaining scope function by receiver and result behavior, predict the checked example, and propose tests for resolution, lambda invocation, control flow, type access, Java use, and readability regressions.",
+            "feedback": "Keep direct locals and firstNotNullOfOrNull because the phases and returned nullable payload are clearer than a mixed scope-function chain; takeIf remains a small predicate-to-value operation. The example skips the charge kind and the legacy String payload, then returns the 75-cent refunded Payment and prints refund:75. Test static extension resolution separately, predicate call count and order, no-match and thrown-predicate behavior, non-local versus labeled returns, supported reified checks and erased nested types, a real Java token-based call, and code review criteria for receiver ambiguity and hidden effects.",
+            "nextConstraint": "Review the function contract, receiver ownership, static resolution, returned values, inline bytecode and control flow, reified limits, and cross-language surface as one API before marking the scenario-ready state."
+          }
+        ],
+        "debrief": {
+          "connections": "The higher-order contract owns predicate timing; extension syntax makes the primary inputs discoverable without changing their classes; explicit locals control receiver ambiguity; scope-function selection follows receiver and result needs; inline enables specific control flow and call-site generation; and reification supplies Kotlin runtime type access while a token-based core preserves Java reachability.",
+          "tradeOffs": "A receiver lambda is concise when one object is central but can hide which receiver wins. Extensions improve Kotlin fluency while remaining static helpers. Scope functions improve locality only while value flow stays obvious. Inline and reified syntax can remove a token for Kotlin callers at the cost of duplicated bytecode, binary coupling, and a separate Java design. Clear ordinary code is preferable to stacking idioms.",
+          "rubric": [
+            "Defines predicate timing, order, result, exception, and capture behavior instead of stopping at the function type.",
+            "Explains static extension resolution and distinguishes extension, dispatch, and lambda receivers.",
+            "Chooses scope functions from receiver and return-value semantics and removes them when locals are clearer.",
+            "Separates inline source semantics, bytecode consequences, performance evidence, API evolution, and non-local-return constraints.",
+            "Uses reified access within erasure limits, supplies a Java-facing alternative, and defends the complete API with behavioral and readability tests."
           ]
         }
       }
