@@ -14,7 +14,7 @@ aliases: [annotation use-site target, Java sealed class, reflection metadata]
 
 ## Overview
 
-Frameworks inspect Java fields, getters, parameters, and type-use annotations, not just Kotlin source properties. Java sealed hierarchies also enter Kotlin with the semantics of the actual Java declaration. Both boundaries require version-aware review of source and generated metadata.
+Frameworks inspect Java fields, getters, parameters, and type-use annotations, not just Kotlin source [properties](#declarations-properties). [Java sealed hierarchies](#closed-domain-models) also enter Kotlin with the semantics of the actual Java declaration. Both boundaries require version-aware review of source and generated metadata.
 
 ## Why it matters to Java developers
 

@@ -14,7 +14,7 @@ aliases: [SAM conversion, JavaBean properties, Java getters in Kotlin]
 
 ## Overview
 
-Kotlin can pass a lambda where a Java functional interface is expected and can read qualifying JavaBean getters with property syntax. These are call-site conveniences over Java methods; they do not make the underlying API a Kotlin function type or field.
+Kotlin can pass a [lambda](#lambdas-higher-order-functions) where a Java functional interface is expected and can read qualifying JavaBean getters with [property syntax](#declarations-properties). These are call-site conveniences over Java methods; they do not make the underlying API a Kotlin function type or field.
 
 ## Why it matters to Java developers
 

@@ -14,7 +14,7 @@ aliases: [JvmWildcard, JvmSuppressWildcards, Java wildcards]
 
 ## Overview
 
-Kotlin declaration-site variance helps Kotlin callers, while Java sees use-site wildcards in generated generic signatures. The mapping depends on position, so a cross-language API needs a real Java caller test.
+[Kotlin declaration-site variance](#declaration-site-variance) helps Kotlin callers, while Java sees use-site wildcards in generated generic signatures. The mapping depends on position, so a cross-language API needs a real Java caller test.
 
 ## Why it matters to Java developers
 
