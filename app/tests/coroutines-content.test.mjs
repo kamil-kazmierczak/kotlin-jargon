@@ -14,7 +14,7 @@ const production = buildContentModel(sources, { publicationMode: 'production' })
 const ids = ['coroutine-suspension', 'coroutine-ownership', 'coroutine-builders',
   'coroutine-context-dispatchers', 'coroutine-cancellation', 'coroutine-failures'];
 
-test('coroutine foundations form a complete review-ready study path', () => {
+test('coroutine foundations form a complete verified study path', () => {
   const path = preview.studyPaths.find(({ id }) => id === 'kotlin-coroutine-foundations');
   assert.deepEqual(path.conceptIds, ids);
   assert.equal(path.scenario.stages.length, 5);
