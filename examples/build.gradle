@@ -77,9 +77,11 @@ examples.each { identity, blocks ->
   if (mode == 'compile-fails' && !blocks[0].attributes.category) throw new GradleException("compile-fails example '${identity}' requires category=<stable-category>")
 
   def materialize = tasks.register("materialize${identity.capitalize()}") {
+    inputs.property('sourceBlocks', blocks.collect { "${it.language}:${it.attributes.file}:${it.code}" }.join('\n'))
     outputs.dir(stagingRoot.map { it.dir(identity) })
     doLast {
       def destination = stagingRoot.get().dir(identity).asFile
+      project.delete(destination)
       blocks.each { block ->
         def target = new File(destination, "src/main/${block.language}/${block.attributes.file}")
         target.parentFile.mkdirs()

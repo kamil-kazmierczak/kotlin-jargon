@@ -74,6 +74,13 @@
       "description": "Type parameters, variance, projections, erased runtime types, and type-safe generic API design.",
       "color": "#4338ca",
       "symbol": "T"
+    },
+    {
+      "id": "coroutines",
+      "name": "Coroutine foundations",
+      "description": "Suspension, owned coroutine lifetimes, context, cancellation, and failure propagation.",
+      "color": "#6d28d9",
+      "symbol": "↝"
     }
   ],
   "studyPaths": [
@@ -484,6 +491,71 @@
             "Chooses static, overload, and throws exposure with a real Java caller.",
             "Predicts variance-driven wildcards and validates the Java generic signature.",
             "Places annotations for the actual scanner, handles Java sealed exhaustiveness, and distinguishes Kotlin source from JVM metadata."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-coroutine-foundations",
+      "name": "Kotlin coroutine foundations",
+      "description": "Trace a coroutine tree from suspension through cancellation and failure.",
+      "conceptIds": [
+        "coroutine-suspension",
+        "coroutine-ownership",
+        "coroutine-builders",
+        "coroutine-context-dispatchers",
+        "coroutine-cancellation",
+        "coroutine-failures"
+      ],
+      "scenario": {
+        "title": "Trace an owned concurrent request",
+        "context": "A request handler uses coroutineScope. It launches an audit child and starts an async lookup child. The lookup switches to Dispatchers.IO for a blocking legacy call. A client disconnect can cancel the request; alternatively the lookup can throw. Decide what the request owns, what runs where, and which failures reach its caller. The failure branch is runnable in Coroutine failures and supervision; the other lessons verify the ownership, dispatcher, and cancellation pieces.",
+        "stages": [
+          {
+            "id": "draw-tree",
+            "kind": "Ownership trace",
+            "prompt": "Draw the request scope, audit launch, and lookup async as a tree. If the handler returns early, which jobs must complete first?",
+            "feedback": "Both builders create children of the request scope. coroutineScope waits for them before returning, including when the block has produced a value. The async result is a Deferred, but ownership does not depend on await.",
+            "nextConstraint": "The lookup needs a legacy blocking Java-style client; the audit child is suspending."
+          },
+          {
+            "id": "choose-dispatcher",
+            "kind": "Dispatcher choice",
+            "prompt": "Where should the blocking lookup run? Does moving it change its parent Job or make the call suspending?",
+            "feedback": "withContext(Dispatchers.IO) changes the dispatcher used for the blocking section while retaining structured ownership. It does not turn the blocking call itself into non-blocking work; the IO dispatcher is intended for blocking I/O.",
+            "nextConstraint": "The caller disconnects after both children have started."
+          },
+          {
+            "id": "trace-cancellation",
+            "kind": "Cancellation trace",
+            "prompt": "What is canceled, when can each child notice, and what must a CPU loop do to stop?",
+            "feedback": "Canceling the request Job cancels descendants. Suspending operations such as await, delay, and withContext respond cooperatively. A CPU loop must check isActive or ensureActive, or reach another cancellation point. Cleanup belongs in finally; avoid swallowing CancellationException.",
+            "nextConstraint": "In a separate run, the lookup throws a non-cancellation exception before the request is canceled."
+          },
+          {
+            "id": "trace-failure",
+            "kind": "Failure trace",
+            "prompt": "Does leaving the Deferred unawaited isolate the lookup failure? What happens to the audit sibling and the caller?",
+            "feedback": "No. An ordinary child failure cancels its parent and siblings. The enclosing coroutineScope fails and rethrows after children finish, even if the Deferred was never awaited. await also exposes the Deferred failure to its caller.",
+            "nextConstraint": "Audit is now explicitly independent of lookup failure, but must still stop when the request is canceled."
+          },
+          {
+            "id": "choose-supervision",
+            "kind": "Design review",
+            "prompt": "Where could supervision express this policy, and who handles the supervised child failure? What deterministic tests would defend both paths?",
+            "feedback": "Use a bounded supervisorScope when sibling independence is the policy. Handle each supervised child failure explicitly, by await or by a launch handler/try-catch in the child; supervision alone does not consume errors. Test parent-child linkage, dispatcher element, cancellation after a start handshake, and failure propagation with joins or awaits rather than sleeps.",
+            "nextConstraint": "A human reviewer checks the lessons, source claims, interview prompts, and implementation-detail wording before verification."
+          }
+        ],
+        "debrief": {
+          "connections": "The scope owns the tree; builders choose result shape; context chooses execution resources without transferring ownership; cooperative cancellation propagates along Job edges; ordinary failure cancels siblings unless an explicit supervision boundary changes that policy.",
+          "tradeOffs": "Structured waiting makes lifetimes legible but can keep a request open for slow children. IO can accommodate a blocking client, while a genuinely suspending client avoids occupying its worker. Supervision preserves sibling work but requires deliberate error handling.",
+          "rubric": [
+            "Draws correct parent and child jobs and explains scope completion.",
+            "Distinguishes suspending, blocking, and dispatcher selection.",
+            "Traces request cancellation and cooperative observation points.",
+            "Explains async failure propagation even without await.",
+            "Chooses a bounded supervision policy and deterministic verification."
           ]
         }
       }
