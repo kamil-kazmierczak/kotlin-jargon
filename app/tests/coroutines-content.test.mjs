@@ -20,13 +20,13 @@ test('coroutine foundations form a complete review-ready study path', () => {
   assert.equal(path.scenario.stages.length, 5);
   for (const id of ids) {
     const concept = preview.concepts.find((item) => item.id === id);
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.curriculum.categoryId, 'coroutines');
     assert.equal(concept.profile, 'substantial');
     assert.ok(concept.lesson.knowledgeCheck);
     assert.ok(concept.interview.question);
   }
-  assert.equal(production.studyPaths.some(({ id }) => id === path.id), false);
+  assert.equal(production.studyPaths.some(({ id }) => id === path.id), true);
 });
 
 test('runnable examples exercise ownership, context, cancellation, and failure', () => {

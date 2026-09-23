@@ -4,9 +4,19 @@ title: Scopes, Jobs, and structured ownership
 profile: substantial
 category: coroutines
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-23
+verifiedAt: 2026-09-23
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-23
+reviewReference: commit:d7f8333
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [coroutine-suspension]
 relatedIds: [coroutine-builders, coroutine-cancellation, coroutine-failures]
 aliases: [structured concurrency, parent Job, child Job, coroutineScope]

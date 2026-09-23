@@ -95,13 +95,13 @@ and staged Java-boundary scenario on 2026-09-23. The mixed-language fixtures com
 consumption directions. The existing Platform types lesson retains its earlier human attestation
 and its original type-system path.
 
-The coroutine-foundations group for issue #26 adds six review-ready lessons and a staged
+The coroutine-foundations group for issue #26 adds six verified lessons and a staged
 request-tree scenario. It teaches suspension, then Job ownership and builders, followed by context and
 dispatchers, cooperative cancellation, and ordinary failure versus supervision. Runnable examples
 exercise parent-child attachment, context elements, cancellation cleanup, and sibling failure with
 explicit handshakes instead of sleep-based timing. Human review of pedagogy, official sources,
-interview realism, and implementation-sensitive wording is still required before any concept
-can become verified and enter the production curriculum.
+interview realism, and implementation-sensitive wording was recorded in the approval commit
+before the group entered the production curriculum.
 
 ## Verification
 
