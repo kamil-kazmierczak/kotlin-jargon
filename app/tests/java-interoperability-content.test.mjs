@@ -15,7 +15,7 @@ const published = buildContentModel(sources, { publicationMode: 'production' });
 const ids = ['platform-types', 'java-nullability-contracts', 'java-sam-properties',
   'java-callable-surface', 'java-generic-signatures', 'java-annotation-boundaries'];
 
-test('interop group connects the existing platform lesson to review-ready API design', () => {
+test('verified interop group connects the existing platform lesson to Java API design', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-java-interoperability');
   assert.deepEqual(group.conceptIds, ids);
   assert.equal(group.scenario.stages.length, 5);
@@ -25,14 +25,14 @@ test('interop group connects the existing platform lesson to review-ready API de
   for (const id of ids.slice(1)) {
     const concept = concepts.get(id);
     assert.equal(concept.curriculum.categoryId, 'java-interoperability');
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.profile, 'substantial');
     assert.ok(concept.lesson.knowledgeCheck);
     assert.ok(concept.interview.question);
   }
   const publicGroup = published.studyPaths.find(({ id }) => id === group.id);
-  assert.deepEqual(publicGroup.conceptIds, ['platform-types']);
-  assert.equal(publicGroup.scenario, undefined);
+  assert.deepEqual(publicGroup.conceptIds, ids);
+  assert.equal(publicGroup.scenario.stages.length, 5);
 });
 
 test('interop examples exercise both compile orders and runnable Java and Kotlin clients', () => {

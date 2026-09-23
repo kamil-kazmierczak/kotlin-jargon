@@ -4,9 +4,19 @@ title: Generic signatures across the JVM boundary
 profile: substantial
 category: java-interoperability
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-23
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-23
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-23
+reviewReference: commit:ee28019
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [java-callable-surface, declaration-site-variance, type-projections]
 relatedIds: [generic-runtime-types, collection-interfaces]
 aliases: [JvmWildcard, JvmSuppressWildcards, Java wildcards]

@@ -4,9 +4,19 @@ title: Java nullability contracts
 profile: substantial
 category: java-interoperability
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
+publishedAt: 2026-09-23
 baseline: kotlin-jvm-2026-09
+verifiedAt: 2026-09-23
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-23
+reviewReference: commit:ee28019
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [platform-types, nullable-types]
 relatedIds: [smart-casts, not-null-assertion]
 aliases: [Jakarta nullability, JSpecify, Java nullability annotations]
