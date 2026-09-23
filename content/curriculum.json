@@ -422,6 +422,71 @@
           ]
         }
       }
+    },
+    {
+      "id": "kotlin-java-interoperability",
+      "name": "Kotlin and Java interoperability",
+      "description": "Normalize Java uncertainty and deliberately design the JVM surface seen by Java clients and tooling.",
+      "conceptIds": [
+        "platform-types",
+        "java-nullability-contracts",
+        "java-sam-properties",
+        "java-callable-surface",
+        "java-generic-signatures",
+        "java-annotation-boundaries"
+      ],
+      "scenario": {
+        "title": "Expose a predictable Kotlin API to Java and consume a Java API safely",
+        "context": "A Kotlin order adapter reads an unannotated Java directory, accepts a Java callback, and publishes a facade used by a Java service and reflection-based framework. Treat the complete mixed-source examples in the lessons as the candidate API.",
+        "stages": [
+          {
+            "id": "normalize-java-result",
+            "kind": "Boundary diagnosis",
+            "prompt": "Java lookup returns an unannotated String and sometimes null. Which Kotlin type should first hold it? What changes if the declaration uses Jakarta @Nullable under Kotlin 2.4?",
+            "feedback": "Use String? at the unannotated boundary and decide explicitly how to handle absence. Kotlin 2.4 reports a nullability mismatch as an error for jakarta.annotation.Nullable; an annotation improves static information but does not prove that a foreign implementation obeys its contract.",
+            "nextConstraint": "The directory also accepts a Java functional interface callback and exposes a JavaBean getter."
+          },
+          {
+            "id": "adapt-java-shapes",
+            "kind": "Consumption design",
+            "prompt": "Show the Kotlin lambda call and property-style access. Which Java members do those forms call, and what cannot be assumed about Java fields or Kotlin properties?",
+            "feedback": "A lambda can adapt to a Java SAM interface. directory.name is Kotlin syntax for a qualifying Java getName method; it invokes the method. A Kotlin property generally exposes accessors to Java, not a public field, and Java field access is not interchangeable with Kotlin property syntax.",
+            "nextConstraint": "The Kotlin facade needs a short Java call, stable static entry point, and catchable IOException."
+          },
+          {
+            "id": "design-java-call",
+            "kind": "API design",
+            "prompt": "Choose @JvmStatic, @JvmOverloads, and @Throws where needed. State what Java sees with and without them, and name the binary/API compatibility cost.",
+            "feedback": "@JvmStatic exposes a companion method on the containing class; @JvmOverloads generates selected trailing-default overloads; @Throws declares IOException for Java checking. Java does not use Kotlin default-argument syntax. Generated overloads and JVM names are public signatures that need consumer tests and compatibility review.",
+            "nextConstraint": "The facade also accepts a covariant Kotlin producer and must be usable from Java."
+          },
+          {
+            "id": "inspect-generic-signature",
+            "kind": "Signature review",
+            "prompt": "Predict the Java wildcard on a producer parameter, explain when @JvmSuppressWildcards changes it, and decide how to test the signature.",
+            "feedback": "Kotlin declaration-site out commonly maps to ? extends in a Java parameter position; return positions commonly omit the wildcard. @JvmSuppressWildcards removes it where chosen, which can narrow Java source compatibility. Compile a real Java caller and inspect signatures when reflection or a processor depends on them.",
+            "nextConstraint": "A framework scans getter and field annotations; a Java sealed result also enters the Kotlin adapter."
+          },
+          {
+            "id": "audit-tooling-boundary",
+            "kind": "Tooling review",
+            "prompt": "Place the annotation on the Java element the framework scans, explain Kotlin 2.4 default targets and @all:, and handle a non-abstract Java sealed class in when.",
+            "feedback": "Use explicit @get:, @field:, or @param: for the required element, or @all: when supported propagation is intentional. Kotlin 2.4's stable default target rules can distribute annotations, so inspect compiled placement. For a non-abstract Java sealed class, Kotlin 2.4 requires a branch for the sealed class itself or else. Compile and run both consumption directions, then review source guarantees separately from emitted JVM metadata.",
+            "nextConstraint": "Before verification, a human checks pedagogy, official sources, interview realism, and version-specific wording."
+          }
+        ],
+        "debrief": {
+          "connections": "Platform types motivate boundary normalization; JavaBean access and SAM conversion simplify consumption; JVM annotations govern callable exposure; variance shapes Java wildcards; and annotation targets and sealed exhaustiveness affect frameworks and source compatibility.",
+          "tradeOffs": "Kotlin syntax is concise, but a published cross-language library also commits to generated overloads, names, throws clauses, generic signatures, and annotation placement. Normalize uncertainty where it enters and compile real consumers before release.",
+          "rubric": [
+            "Normalizes an unannotated Java return and explains Kotlin 2.4 Jakarta nullability enforcement.",
+            "Traces SAM and JavaBean conveniences to the underlying Java members.",
+            "Chooses static, overload, and throws exposure with a real Java caller.",
+            "Predicts variance-driven wildcards and validates the Java generic signature.",
+            "Places annotations for the actual scanner, handles Java sealed exhaustiveness, and distinguishes Kotlin source from JVM metadata."
+          ]
+        }
+      }
     }
   ]
 }

@@ -87,6 +87,13 @@ and runtime type evidence. Kamil approved the curriculum authored through commit
 2026-09-22, confirming its pedagogy, authoritative sources, interview realism, type-safe variant
 scenario, and JVM-erasure wording.
 
+The Java-interoperability group for issue #25 reuses the verified Platform types lesson and adds
+five review-ready lessons. They cover Java nullability contracts, SAM and JavaBean consumption,
+Java-callable Kotlin signatures, generated wildcards, and annotation and Java sealed boundaries.
+Its staged scenario and mixed-language fixtures are available in preview. The new lessons and
+scenario require the normal human review attestation before production publication; the existing
+Platform types lesson remains verified on its original type-system path.
+
 ## Verification
 
 Run the complete local release gate from the repository root:
