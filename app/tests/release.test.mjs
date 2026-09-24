@@ -64,6 +64,11 @@ try {
   await emptySearch.getByText('No Kotlin concepts match "monad-transformer"', { exact: true }).waitFor();
   await page.keyboard.press('Escape');
   console.log(`Production release: all ${data.concepts.length} concepts are searchable at the Pages subpath.`);
+  await page.goto(`${baseUrl}#platform-types`);
+  await page.getByRole('button', { name: 'Study focused lesson' }).click();
+  await page.getByRole('navigation', { name: 'Lesson outline' }).getByRole('button', { name: 'Sources', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('nav[aria-label="Lesson outline"] [aria-current="location"]')?.textContent === 'Sources');
+  await page.getByRole('button', { name: 'Back to graph', exact: true }).click();
   const longest = data.concepts.filter(({ curriculum }) => ['coroutines', 'streams-concurrency'].includes(curriculum.categoryId))
     .sort((a, b) => JSON.stringify(b.lesson).length - JSON.stringify(a.lesson).length)[0];
   await page.goto(baseUrl);

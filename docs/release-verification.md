@@ -30,6 +30,8 @@ Run `npm run verify` at the repository root. `.github/workflows/deploy.yml` uses
 
 The focused desktop reader and its outline had been removed by a later graph change. The release restores that composition, keeps the overview compact, and derives previous/next navigation from the selected study path (or the first containing path). Optional Deep Dives expose already-reviewed connected lessons at deep-dive depth; they do not hide core reasoning or introduce another source of lesson prose.
 
+The outline now recognizes the final scroll position, so a short final Sources section becomes current even when it cannot reach the top of the reader. The browser suite covers this on Platform types.
+
 Closing a lesson also triggered graph auto-centering, overwriting the captured camera. Auto-centering now runs when the overview opens, while closing accepts the saved camera. Preview dismissal and returning along a lesson trail retain the origin reading position within the session.
 
 Graph control pointer events previously bubbled into canvas hit testing and zooming, so selecting a filter could unexpectedly open a lesson. Canvas interactions now ignore control events; the release test checks independent control scrolling.

@@ -11,6 +11,9 @@ export default function LessonOutline({ sections, readingColumn, onBack }) {
         const section = root.querySelector(`#${id}`);
         if (section && section.getBoundingClientRect().top <= top + 48) current = id;
       }
+      if (root.scrollTop > 0 && root.scrollTop + root.clientHeight >= root.scrollHeight - 1) {
+        current = sections.at(-1)?.[0];
+      }
       setActiveSection(current);
     };
     trackSection();
