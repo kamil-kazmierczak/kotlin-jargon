@@ -88,6 +88,13 @@
       "description": "Flow lifecycles, hot state and event streams, delivery and overload policy, and coordination of shared state.",
       "color": "#047857",
       "symbol": "∿"
+    },
+    {
+      "id": "advanced-kotlin",
+      "name": "Advanced and version-sensitive Kotlin",
+      "description": "Specialized compiler contracts, runtime inspection, declarative APIs, and Kotlin 2.4 boundaries.",
+      "color": "#475569",
+      "symbol": "✦"
     }
   ],
   "studyPaths": [
@@ -637,6 +644,71 @@
             "Chooses a bounded overload policy that matches whether intermediate values may be lost.",
             "Protects a compound inventory invariant and distinguishes atomic update, mutex, and owner confinement.",
             "Uses virtual time and explicit handshakes while recognizing that runTest does not provide parallel stress coverage."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-advanced-boundaries",
+      "name": "Advanced Kotlin design boundaries",
+      "description": "Use contracts, reflection, annotation processing, DSLs, and Kotlin 2.4 features only when their constraints pay for their complexity. Reference-only features remain searchable outside this path.",
+      "conceptIds": [
+        "custom-contracts",
+        "runtime-reflection",
+        "annotation-processing-boundaries",
+        "type-safe-dsls",
+        "context-parameters"
+      ],
+      "scenario": {
+        "title": "Design a small framework adapter without hiding its contracts",
+        "context": "A JVM service accepts a declarative route description, validates handlers, and exposes metadata to a Java framework. Most routes are ordinary functions. One adapter must inspect plugin types at runtime; the service is pinned to Kotlin 2.4.20 and JDK 25, while another module still builds with Kotlin 2.3.",
+        "stages": [
+          {
+            "id": "justify-contract",
+            "kind": "Design choice",
+            "prompt": "A helper checks that a nullable handler is present. Does it need a user contract? State the effect, required opt-in, and a simpler alternative.",
+            "feedback": "An explicit check returning the non-null handler often communicates the same invariant with no contract. If a shared assertion helper materially improves callers, its returns-implies effect must truthfully match every normal return and its declaration needs ExperimentalContracts opt-in; the compiler trusts the declared effect.",
+            "nextConstraint": "The adapter must inspect plugin classes loaded by name, but the steady-state route dispatch knows its handlers statically."
+          },
+          {
+            "id": "limit-reflection",
+            "kind": "Boundary choice",
+            "prompt": "Where does reflection earn a place? Compare Kotlin reflection with Java reflection and name a cost and a contract it cannot infer.",
+            "feedback": "Use reflection at the plugin discovery boundary, cache validated handles if needed, and use direct calls for known handlers. Kotlin reflection needs kotlin-reflect on the JVM for rich member inspection; Java reflection sees JVM elements. Neither makes a missing runtime retention or wrong annotation target visible.",
+            "nextConstraint": "The Java framework scans method annotations and the route DSL nests route builders."
+          },
+          {
+            "id": "place-metadata-and-scope",
+            "kind": "API review",
+            "prompt": "Choose an annotation target and retention for the scanner. How will a DSL prevent accidental calls on an outer receiver?",
+            "feedback": "Put the annotation on the method or explicit getter the scanner actually reads, with RUNTIME retention if reflection is the consumer; inspect bytecode or a Java consumer test. A @DslMarker constrains implicit receiver selection, while validation still enforces route uniqueness and runtime invariants.",
+            "nextConstraint": "The team proposes a context parameter for a logger and an explicit backing field for a live route list."
+          },
+          {
+            "id": "version-and-ownership",
+            "kind": "Migration decision",
+            "prompt": "Which Kotlin 2.4 facilities can the 2.3 module consume? Explain whether a read-only List facade makes live mutable routes safe to share.",
+            "feedback": "Context parameters and explicit backing fields are stable in Kotlin 2.4, but source compatibility with the 2.3 module needs a separate boundary or older syntax. Explicit context arguments remain experimental and require a compiler flag. A List view can still expose live mutable state; snapshot or synchronize where ownership requires it.",
+            "nextConstraint": "Defend each specialized feature against a plain function, explicit dependency parameter, or conventional builder."
+          },
+          {
+            "id": "defend-complexity",
+            "kind": "Design review",
+            "prompt": "Give the smallest justified adapter design, its tests, and the exact guarantee level of each claim.",
+            "feedback": "Prefer plain functions and explicit parameters on the common path. Use a contract only for a truthful reusable control-flow effect, reflection only at the dynamic plugin boundary, explicit annotation placement for the Java scanner, and DSL scope control for nested syntax. Compile examples on the pinned baseline, test the Java scanner, and label 2.4 source syntax and experimental compiler options separately from language contracts and library behavior.",
+            "nextConstraint": "A human reviewer must confirm pedagogy, primary sources, interview realism, and version and guarantee wording before publication."
+          }
+        ],
+        "debrief": {
+          "connections": "Contracts inform compiler flow analysis, reflection inspects runtime declarations, annotations carry metadata to a named consumer, DSL markers constrain implicit receivers, and context parameters resolve ambient dependencies. Each has a different evidence boundary.",
+          "tradeOffs": "Specialized features can remove repeated code at a narrow boundary but add opt-ins, dependencies, binary or source compatibility work, and hidden coupling. A simple function, explicit parameter, or ordinary builder is easier to audit for the common case.",
+          "rubric": [
+            "Justifies or rejects a user contract and names ExperimentalContracts plus the truth obligation.",
+            "Limits runtime reflection to dynamic discovery and distinguishes Kotlin from Java reflection.",
+            "Chooses explicit annotation placement and retention for the actual scanner.",
+            "Explains what @DslMarker constrains and what runtime validation must still enforce.",
+            "Labels Kotlin 2.4 stable features, experimental explicit context arguments, and cross-version source constraints.",
+            "Separates specification, documented library contracts, compiler analysis, and implementation observations."
           ]
         }
       }
