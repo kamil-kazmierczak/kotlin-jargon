@@ -12,7 +12,7 @@ verifiedAt: 2026-09-24
 reviewerKind: human
 reviewedBy: kamil-kazmierczak
 reviewedAt: 2026-09-24
-reviewReference: commit:06cfe81
+reviewReference: commit:de2a9a89eac5dae4500df557440027e11f2c10a2
 reviewPedagogicalClarity: true
 reviewAuthoritativeSupport: true
 reviewInterviewRealism: true
