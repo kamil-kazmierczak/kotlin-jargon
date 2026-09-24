@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Check, ExternalLink, Link2, X } from 'lucide-react';
 import { marked } from 'marked';
 import { soundEffects } from '../utils/audio';
 import CodeBlock from './CodeBlock';
+import LessonOutline from './LessonOutline';
 import { LESSON_SECTIONS } from '../lessonSections.mjs';
 
 marked.use({ gfm: true, breaks: true });
@@ -11,7 +12,7 @@ function Markdown({ children }) {
   const html = useMemo(() => marked.parse(children || ''), [children]);
   return (
     <div
-      className="prose-fp prose-selectable text-xs leading-relaxed"
+      className="prose-kotlin prose-selectable text-xs leading-relaxed"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -33,6 +34,11 @@ function formatDepth(depth) {
 
 export default function NodeDetailPanel({
   concept,
+  focused,
+  onFocus,
+  studyPaths,
+  activePathId,
+  readingPositions,
   categories,
   allConceptsMap,
   connectionPreview,
@@ -52,7 +58,12 @@ export default function NodeDetailPanel({
   const [interviewReached, setInterviewReached] = useState(false);
   const [scratchAnswer, setScratchAnswer] = useState('');
   const [reasoningRevealed, setReasoningRevealed] = useState(false);
-  if (!concept) return null;
+  const readingColumn = useRef(null);
+  useLayoutEffect(() => {
+    if (focused && readingColumn.current) {
+      readingColumn.current.scrollTop = readingPositions.current[concept.id] || 0;
+    }
+  }, [focused, concept.id, readingPositions]);
 
   const category = categories[concept.curriculum.categoryId] || {};
   const accentColor = useCategoryColors ? (category.color || '#7c3aed') : (isDark ? '#e2e8f0' : '#1e293b');
@@ -63,6 +74,15 @@ export default function NodeDetailPanel({
   const previewedConcept = connectionPreview && allConceptsMap[connectionPreview.conceptId];
   const isPrerequisitePreview = connectionPreview?.relationship === 'prerequisite';
 
+  const sections = LESSON_SECTIONS.filter(([key]) => concept.lesson[key]);
+  const deepDives = [...new Map([...related, ...prerequisites]
+    .filter((item) => item.curriculum.depth === 'deep-dive')
+    .map((item) => [item.id, item])).values()];
+  const studyPath = studyPaths.find((path) => path.id === activePathId && path.conceptIds.includes(concept.id))
+    || studyPaths.find((path) => path.conceptIds.includes(concept.id));
+  const position = studyPath?.conceptIds.indexOf(concept.id) ?? -1;
+  const outline = [...sections, ...(concept.interview && interviewReached ? [['interview-practice', 'Interview practice']] : []), ...(deepDives.length ? [['deep-dives', 'Deep Dives']] : []), ['lesson-connections', 'Connected concepts'], ['lesson-sources', 'Sources']];
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#${concept.id}`);
     setCopiedLink(true);
@@ -71,7 +91,7 @@ export default function NodeDetailPanel({
   };
 
   const startLesson = () => {
-    document.getElementById('lesson-start')?.scrollIntoView({ behavior: 'smooth' });
+    onFocus();
   };
 
   const reachInterview = () => {
@@ -84,10 +104,10 @@ export default function NodeDetailPanel({
   return (
     <aside
       aria-label={`${concept.title} concept`}
-      className={`fixed inset-y-0 right-0 w-[500px] lg:w-[560px] backdrop-blur-md border-l z-50 flex flex-col font-mono shadow-2xl ${
+      className={`fixed ${focused ? 'inset-y-8 left-1/2 -translate-x-1/2 w-[min(1200px,calc(100vw-5rem))]' : 'inset-y-0 right-0 w-[500px] lg:w-[560px]'} backdrop-blur-md border-l z-50 flex flex-col font-mono shadow-2xl ${
         isDark
           ? 'bg-[#121212]/95 border-[rgba(240,240,238,0.15)] text-[#f0f0ee]'
-          : 'bg-[#eaeae8]/98 border-[rgba(26,26,25,0.15)] text-[#1a1a19]'
+          : 'bg-[#eaeae8] border-[rgba(26,26,25,0.15)] text-[#1a1a19]'
       }`}
     >
       <div className={`p-5 border-b flex items-start justify-between gap-4 ${
@@ -111,7 +131,13 @@ export default function NodeDetailPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      <div className="flex flex-1 min-h-0">
+        {focused && <LessonOutline sections={outline} readingColumn={readingColumn} onBack={onClose} />}
+      <div ref={readingColumn} role="region" aria-label={focused ? 'Lesson reading column' : 'Concept summary'}
+        onScroll={() => { if (focused) readingPositions.current[concept.id] = readingColumn.current.scrollTop; }}
+        className="flex-1 min-w-0 overflow-y-auto p-5">
+      <div className="mx-auto max-w-3xl space-y-6">
+        {!focused && (
         <section role="region" aria-labelledby="concept-overview-heading" className={`p-4 border space-y-4 ${
           isDark ? 'bg-[#1a1a19] border-white/10' : 'bg-[#dededb] border-black/10'
         }`}>
@@ -139,16 +165,18 @@ export default function NodeDetailPanel({
             className="w-full px-3 py-2 text-xs font-semibold border text-white"
             style={{ backgroundColor: accentColor, borderColor: accentColor }}
           >
-            Study this concept
+            Study focused lesson
           </button>
         </section>
+        )}
 
+        {focused && <>
         <section id="lesson-start" className="space-y-5 scroll-mt-4">
-          {LESSON_SECTIONS.filter(([key]) => concept.lesson[key]).map(([key, title]) => (
-            <div key={key}>
+          {sections.map(([key, title]) => (
+            <section key={key} id={key} className="scroll-mt-5">
               <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">{title}</h3>
               <LessonMarkdown content={concept.lesson[key]} isDark={isDark} soundEnabled={soundEnabled} />
-            </div>
+            </section>
           ))}
           {concept.interview && !interviewReached && (
             <button
@@ -237,6 +265,18 @@ export default function NodeDetailPanel({
           </section>
         )}
 
+        {deepDives.length > 0 && (
+          <details id="deep-dives" className="border border-current/20 p-4 scroll-mt-5">
+            <summary className="cursor-pointer text-sm font-bold">Deep Dives</summary>
+            <section aria-label="Deep Dive connections" className="mt-4 space-y-4">
+              {deepDives.map((item) => <div key={item.id}>
+                <button type="button" className="text-xs underline" onClick={() => onPreviewConcept({ conceptId: item.id, relationship: prerequisites.some(({ id }) => id === item.id) ? 'prerequisite' : 'related' })}>{item.title}</button>
+                <p className="mt-2 text-xs leading-relaxed">{item.lesson.overview}</p>
+              </div>)}
+            </section>
+          </details>
+        )}
+        <div id="lesson-connections" className="space-y-5 scroll-mt-5">
         {prerequisites.length > 0 && (
           <section>
             <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Best understood after</h3>
@@ -256,13 +296,15 @@ export default function NodeDetailPanel({
           </section>
         )}
 
+        </div>
+
         {trail.length > 0 && (
           <button type="button" onClick={onReturnAlongTrail} className="text-xs underline">
             Return to {allConceptsMap[trail.at(-1).conceptId]?.title} lesson
           </button>
         )}
 
-        <section>
+        <section id="lesson-sources" className="scroll-mt-5">
           <h3 className="text-[10px] uppercase tracking-widest opacity-60 mb-2">Sources</h3>
           <ul className="space-y-1.5">
             {concept.provenance.sources.map((source) => (
@@ -274,13 +316,23 @@ export default function NodeDetailPanel({
             ))}
           </ul>
         </section>
+        {studyPath && <nav aria-label="Study path navigation" className="space-y-3 border-t border-current/20 pt-4 text-xs">
+          <p>{studyPath.name}</p>
+          <div className="flex justify-between gap-4">
+            {position > 0 && <button type="button" onClick={() => onStudyPreview(studyPath.conceptIds[position - 1])}>Previous: {allConceptsMap[studyPath.conceptIds[position - 1]].title}</button>}
+            {position < studyPath.conceptIds.length - 1 && <button type="button" onClick={() => onStudyPreview(studyPath.conceptIds[position + 1])}>Next: {allConceptsMap[studyPath.conceptIds[position + 1]].title}</button>}
+          </div>
+        </nav>}
+        </>}
+      </div>
+      </div>
       </div>
 
       {previewedConcept && (
         <section
           role="dialog"
           aria-label={`Concept preview: ${previewedConcept.title}`}
-          className={`absolute inset-x-4 top-24 z-10 border p-5 shadow-xl ${
+          className={`absolute right-4 top-24 w-[420px] max-h-[calc(100%-8rem)] overflow-y-auto z-10 border p-5 shadow-xl ${
             isDark ? 'bg-[#1a1a19] border-white/20' : 'bg-[#dededb] border-black/20'
           }`}
         >

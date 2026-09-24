@@ -9,8 +9,8 @@
     "build": "node scripts/generate-content.mjs && vite build",
     "build:preview": "node scripts/generate-content.mjs --preview && vite build --mode curriculum-preview",
     "preview": "vite preview",
-    "test": "npm run test:content && npm run test:state && npm run test:e2e && npm run test:preview",
-    "test:content": "node --test tests/content-pipeline.test.mjs tests/human-review.test.mjs tests/type-system-content.test.mjs tests/domain-modeling-content.test.mjs tests/collections-content.test.mjs tests/functions-idioms-content.test.mjs tests/generics-content.test.mjs tests/java-interoperability-content.test.mjs tests/coroutines-content.test.mjs tests/streams-concurrency-content.test.mjs tests/advanced-kotlin-content.test.mjs",
+    "test": "npm run test:content && npm run test:state && npm run test:e2e && npm run test:release && npm run test:preview",
+    "test:content": "node --test tests/content-pipeline.test.mjs tests/human-review.test.mjs tests/type-system-content.test.mjs tests/domain-modeling-content.test.mjs tests/collections-content.test.mjs tests/functions-idioms-content.test.mjs tests/generics-content.test.mjs tests/java-interoperability-content.test.mjs tests/coroutines-content.test.mjs tests/streams-concurrency-content.test.mjs tests/advanced-kotlin-content.test.mjs tests/release-content.test.mjs",
     "test:state": "node --test tests/application-state.test.mjs",
     "test:e2e": "node tests/e2e.test.mjs",
     "test:preview": "npm run build:preview && node tests/core-semantics.test.mjs && node tests/type-system.test.mjs && node tests/domain-modeling.test.mjs && node tests/collections.test.mjs && node tests/functions-idioms.test.mjs && node tests/generics.test.mjs && node tests/java-interoperability.test.mjs && node tests/coroutines.test.mjs && node tests/streams-concurrency.test.mjs && node tests/advanced-kotlin.test.mjs",
@@ -19,10 +19,10 @@
     "verify:reviews": "node scripts/verify-human-reviews.mjs",
     "verify:generation": "node scripts/verify-generation.mjs",
     "generate": "node scripts/generate-content.mjs",
-    "generate:preview": "node scripts/generate-content.mjs --preview"
+    "generate:preview": "node scripts/generate-content.mjs --preview",
+    "test:release": "node tests/release.test.mjs"
   },
   "dependencies": {
-    "canvas-confetti": "^1.9.4",
     "lucide-react": "^1.45.0",
     "marked": "^18.0.12",
     "prismjs": "^1.30.0",

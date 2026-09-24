@@ -41,6 +41,8 @@ const loadStoredProgress = (knownConceptIds, knownGroupIds) => {
 export default function App() {
   const { meta, categories, concepts, graph } = contentData;
   
+  const [focused, setFocused] = useState(false);
+  const readingPositions = useRef({});
   const [applicationState, dispatch] = useReducer(
     applicationStateReducer,
     undefined,
@@ -80,7 +82,7 @@ export default function App() {
   // Initialize theme: check explicit preference or default to light mode
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
-      const explicit = localStorage.getItem('fp_theme_explicit');
+      const explicit = localStorage.getItem('kotlin-concepts-theme');
       if (explicit) return explicit === 'dark';
       return false; // Default to light mode
     }
@@ -127,6 +129,8 @@ export default function App() {
   // Opening a lesson captures the graph view; previews deliberately do not.
   const handleOpenLesson = useCallback((nodeId) => {
     if (!nodeId) return;
+    setFocused(false);
+    readingPositions.current = {};
     setConnectionPreview(null);
     dispatch({ type: 'lesson-opened', conceptId: nodeId });
     window.history.pushState(null, '', `#${nodeId}`);
@@ -134,12 +138,14 @@ export default function App() {
 
   // Close drawer
   const handleClosePanel = useCallback(() => {
+    setFocused(false);
     setConnectionPreview(null);
     dispatch({ type: 'concept-closed' });
     window.history.pushState(null, '', window.location.pathname);
   }, []);
 
   const handleStudyPreview = useCallback((conceptId) => {
+    setFocused(true);
     setConnectionPreview(null);
     dispatch({ type: 'preview-study-selected', conceptId });
     window.history.pushState(null, '', `#${conceptId}`);
@@ -326,7 +332,7 @@ export default function App() {
             onClick={() => {
               setIsDark(prev => {
                 const next = !prev;
-                localStorage.setItem('fp_theme_explicit', next ? 'dark' : 'light');
+                localStorage.setItem('kotlin-concepts-theme', next ? 'dark' : 'light');
                 return next;
               });
               soundEffects.toggle(soundEnabled);
@@ -397,11 +403,18 @@ export default function App() {
         />
       </main>
 
-      {/* Slideover Detail Drawer */}
+      {focused && isPanelOpen && <div className="fixed inset-0 z-40 bg-black/30" />}
+
+      {/* Concept overview and focused reading */}
       {activeConcept && (
         <NodeDetailPanel
           key={activeConcept.id}
           concept={activeConcept}
+          focused={focused}
+          onFocus={() => setFocused(true)}
+          readingPositions={readingPositions}
+          studyPaths={contentData.studyPaths}
+          activePathId={graphView.studyPathOverlay?.pathId}
           categories={categories}
           allConceptsMap={allConceptsMap}
           connectionPreview={connectionPreview}

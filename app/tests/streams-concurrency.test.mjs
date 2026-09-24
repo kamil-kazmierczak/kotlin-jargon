@@ -7,7 +7,7 @@ await withCurriculumPreview(5602, async ({ page, errors, baseUrl }) => {
   await page.goto(baseUrl + '#flow-backpressure');
   await page.evaluate(() => localStorage.clear());
   const lesson = page.getByRole('complementary', { name: 'Flow backpressure and overload policies concept' });
-  await lesson.getByRole('button', { name: 'Study this concept' }).click();
+  await lesson.getByRole('button', { name: 'Study focused lesson' }).click();
   for (const [, name] of LESSON_SECTIONS) {
     await lesson.getByRole('heading', { name, exact: true }).waitFor();
   }

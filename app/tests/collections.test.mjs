@@ -7,7 +7,7 @@ await withCurriculumPreview(5400, async ({ page, errors, baseUrl }) => {
   await page.goto(`${baseUrl}#sequences`);
   await page.evaluate(() => localStorage.clear());
   const lesson = page.getByRole('complementary', { name: 'Sequences, evaluation, and pipeline cost concept' });
-  await lesson.getByRole('button', { name: 'Study this concept' }).click();
+  await lesson.getByRole('button', { name: 'Study focused lesson' }).click();
   for (const [, name] of LESSON_SECTIONS) {
     await lesson.getByRole('heading', { name, exact: true }).waitFor();
   }

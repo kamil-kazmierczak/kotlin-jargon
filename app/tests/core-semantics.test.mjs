@@ -6,7 +6,7 @@ import { withCurriculumPreview } from './preview-browser.mjs';
 await withCurriculumPreview(5199, async ({ page, errors, baseUrl }) => {
   await page.goto(`${baseUrl}#initialization`);
   const lesson = page.getByRole('complementary', { name: 'Initialization order and safe construction concept' });
-  await lesson.getByRole('button', { name: 'Study this concept' }).click();
+  await lesson.getByRole('button', { name: 'Study focused lesson' }).click();
   for (const [, name] of LESSON_SECTIONS) {
     await lesson.getByRole('heading', { name, exact: true }).waitFor();
   }

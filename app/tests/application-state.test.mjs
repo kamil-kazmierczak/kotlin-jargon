@@ -43,22 +43,22 @@ test('the default state keeps the graph highlight while the concept panel is clo
 test('selecting and closing concepts preserves the existing desktop navigation behavior', () => {
   const selected = applicationStateReducer(createApplicationState(), {
     type: 'concept-selected',
-    conceptId: 'thunk'
+    conceptId: 'nullable-types'
   });
 
-  assert.equal(selected.selection.conceptId, 'thunk');
+  assert.equal(selected.selection.conceptId, 'nullable-types');
   assert.equal(selected.selection.panelOpen, true);
 
   const closed = applicationStateReducer(selected, { type: 'concept-closed' });
 
-  assert.equal(closed.selection.conceptId, 'thunk');
+  assert.equal(closed.selection.conceptId, 'nullable-types');
   assert.equal(closed.selection.panelOpen, false);
 });
 
 test('captured application state restores selection and the complete graph view contract', () => {
   const state = createApplicationState({
     selection: {
-      conceptId: 'functor',
+      conceptId: 'platform-types',
       panelOpen: true
     },
     graphView: {
@@ -86,20 +86,20 @@ test('captured application state restores selection and the complete graph view 
 test('graph view updates do not expose geometry to or overwrite selection state', () => {
   const selected = applicationStateReducer(createApplicationState(), {
     type: 'concept-selected',
-    conceptId: 'monad'
+    conceptId: 'coroutine-ownership'
   });
   const updated = applicationStateReducer(selected, {
     type: 'graph-view-changed',
     graphView: {
       camera: { x: 3, y: 4, scale: 0.8 },
-      filters: { query: 'mon', categoryIds: [], depths: ['core'] },
+      filters: { query: 'coroutine', categoryIds: [], depths: ['core'] },
       studyPathOverlay: null
     }
   });
 
   assert.deepEqual(updated.selection, selected.selection);
   assert.deepEqual(updated.graphView.camera, { x: 3, y: 4, scale: 0.8 });
-  assert.equal(updated.graphView.filters.query, 'mon');
+  assert.equal(updated.graphView.filters.query, 'coroutine');
 });
 
 test('a hidden search result temporarily reveals its neighborhood and restores the exact prior view', () => {

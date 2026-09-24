@@ -148,12 +148,14 @@ export default function GraphCanvas({
         stateRef.current.camera.targetScale = 0.95;
       }
     }
-  }, [graphData]);
+    const { camera } = stateRef.current;
+    onCameraChange?.({ x: camera.targetX, y: camera.targetY, scale: camera.targetScale });
+  }, [graphData, onCameraChange]);
 
   // Center on selected node when selection changes or panel opens/closes
   // Calculates optimal zoom scale so the selected node AND all its connected neighbor nodes fit comfortably in the visible viewport
   useEffect(() => {
-    if (!selectedNodeId) return;
+    if (!selectedNodeId || !isPanelOpen) return;
     const node = stateRef.current.nodeMap?.get(selectedNodeId);
     if (node) {
       const links = stateRef.current.links || [];
@@ -693,7 +695,7 @@ export default function GraphCanvas({
 
   // Mouse interaction handlers
   const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || e.target !== canvasRef.current) return;
     const pos = clientToWorld(e.clientX, e.clientY);
     const hitNode = getNodeAt(pos.x, pos.y);
 
@@ -714,6 +716,11 @@ export default function GraphCanvas({
 
   const handleMouseMove = (e) => {
     const { isPanning, panStart, dragNode, camera } = stateRef.current;
+    if (e.target !== canvasRef.current && !isPanning && !dragNode) {
+      setHoveredNodeId(null);
+      setTooltip(null);
+      return;
+    }
     const pos = clientToWorld(e.clientX, e.clientY);
 
     // Notify parent of normalized pointer position for WebGPU shader
@@ -771,14 +778,14 @@ export default function GraphCanvas({
       onSelectNode(dragNode.id);
       soundEffects.select(soundEnabled);
       stateRef.current.dragNode = null;
-    } else if (!isPanning) {
+    } else if (!isPanning && e.target === canvasRef.current) {
       const pos = clientToWorld(e.clientX, e.clientY);
       const hit = getNodeAt(pos.x, pos.y);
       if (hit) {
         onSelectNode(hit.id);
         soundEffects.select(soundEnabled);
       }
-    } else {
+    } else if (isPanning) {
       const { camera } = stateRef.current;
       onCameraChange?.({
         x: camera.targetX,
@@ -791,6 +798,7 @@ export default function GraphCanvas({
   };
 
   const handleWheel = (e) => {
+    if (e.target !== canvasRef.current) return;
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
     const { camera } = stateRef.current;
@@ -825,6 +833,8 @@ export default function GraphCanvas({
       onWheel={handleWheel}
       role="region"
       aria-label="Concept graph"
+      data-camera={JSON.stringify(applicationCamera)}
+      data-selected-concept={selectedNodeId}
     >
       <canvas ref={canvasRef} className="block w-full h-full relative z-10" aria-hidden="true" />
 

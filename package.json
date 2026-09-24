@@ -2,15 +2,13 @@
   "name": "kotlin-jargon",
   "version": "1.0.0",
   "description": "A curated Kotlin/JVM learning graph for experienced Java developers.",
-  "main": "index.js",
   "scripts": {
     "dev": "npm --prefix app run dev",
     "build": "npm --prefix app run build",
     "preview": "npm --prefix app run preview",
     "verify": "npm run verify:examples && npm --prefix app run verify",
     "verify:examples": "./examples/gradlew -p examples --no-daemon verifyExamples",
-    "test": "eslint readme.md",
-    "toc": "roadmarks",
+    "test": "npm --prefix app run test:content && npm --prefix app run test:state",
     "prepare": "husky"
   },
   "repository": {
@@ -24,14 +22,9 @@
   },
   "homepage": "https://github.com/kamil-kazmierczak/kotlin-jargon#readme",
   "devDependencies": {
-    "eslint": "^8.20.0",
-    "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-markdown": "^3.0.0",
-    "eslint-plugin-n": "^15.2.4",
-    "eslint-plugin-promise": "^6.0.0",
-    "eslint-plugin-standard": "^5.0.0",
-    "husky": "^9.1.7",
-    "roadmarks": "^1.6.3"
+    "husky": "^9.1.7"
+  },
+  "engines": {
+    "node": ">=22.20.0"
   }
 }

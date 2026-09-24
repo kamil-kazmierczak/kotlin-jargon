@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.20.0
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
@@ -47,6 +47,9 @@ jobs:
         run: |
           npm ci
           npm --prefix app ci
+
+      - name: Install desktop browser
+        run: npm --prefix app exec -- playwright install --with-deps chromium
 
       - name: Verify and build
         run: npm run verify

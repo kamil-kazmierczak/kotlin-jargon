@@ -1,28 +1,21 @@
 # Contributing
 
-This project is a work in progress. Contributions are very welcome.
+Kotlin Concepts teaches Kotlin/JVM semantics and design decisions to experienced Java developers.
 
-## Hard rules
-There is a Husky pre-commit hook that runs `npm test && npm run toc` to lint the README and update its table of contents.
+## Content
 
-That said, we'd like to maintain some consistency across the document.
+Edit `content/concepts/*.md` and `content/curriculum.json`. Follow the [publication contract](docs/publication-contract.md) and the [example verification modes](content/examples/verification-modes.md). Generated application data and exports must not be edited or committed.
 
-## Style guide
-1. Every definition should include at least one relevant code example in the language the curriculum teaches.
-1. Definitions should be written using the simplest language possible. Every word should tell.
-1. Target programmers that have no functional programming experience.
-1. We value understandability more than accuracy. e.g. It's okay to describe a functor as a container.
-1. Don't overuse jargon even if defined elsewhere in the document.
-1. Link to terms defined in the document when you use them in a definition.
-1. Avoid big walls of text
+Use plain language, explain the Java-developer relevance, and support claims with authoritative sources. Distinguish language guarantees, library contracts, compiler behavior, and JVM implementation observations. Accuracy and pedagogy are both required. Keep category, depth, prerequisites, related concepts, and study-path order separate.
 
-## Code conventions
-[![JavaScript Style Guide](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
+Substantial lessons include worked examples, decision guidance, knowledge checks, and interview reasoning. Use the pinned Kotlin/JVM baseline. Every code block declares its verification mode; runnable and compiler-rejection examples are verified by the Gradle harness.
 
-* Be consistent with other examples
-* Prefer arrow functions
-* Parenthesis around function arguments
-* Put output values in comments
-* Keep it short and simple
+AI-authored content stops at `review-ready`. Only a human can approve publication using the review attestation workflow. Do not alter reviewed prose without renewing its approval.
 
-This styleguide is a WIP too! Send PRs :)
+## Application
+
+Preserve the desktop graph, compact Concept Overview, centered Focused Lesson, independent reading column, outline, and connected-concept preview. Back to graph must restore the entry selection, camera, filters, and path. Keep curated navigation separate from prerequisite and related edges.
+
+Assessments are explicit learner judgments. Scratch answers and reveal state are temporary. Group readiness is independent of individual concept assessments. Do not add automated grading or gamification.
+
+Follow the existing JavaScript and React conventions. Add regression coverage for changed learner or author behavior. Run focused tests while developing and `npm run verify` before release. The pre-commit hook runs the content and state tests; it does not rewrite authored files.

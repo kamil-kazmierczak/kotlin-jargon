@@ -80,13 +80,8 @@ server.listen(PORT, '127.0.0.1', async () => {
     await overview.getByText(/Kotlin separates nullable and non-null types/).waitFor({ state: 'visible' });
     await overview.getByText('Core', { exact: true }).waitFor({ state: 'visible' });
     await overview.getByText('None', { exact: true }).waitFor({ state: 'visible' });
-    await overview.getByRole('button', { name: 'Study this concept' }).click();
-    await page.waitForFunction(() => {
-      const lesson = document.getElementById('lesson-start');
-      const scroller = lesson?.parentElement;
-      if (!lesson || !scroller) return false;
-      return scroller.scrollTop > 0;
-    });
+    await overview.getByRole('button', { name: 'Study focused lesson' }).click();
+    await page.getByRole('navigation', { name: 'Lesson outline' }).waitFor();
     await page.getByRole('heading', { name: 'Semantics' }).waitFor({ state: 'visible' });
     console.log('✓ Stable URL opens the docked Nullable types Concept Overview.');
 
@@ -131,6 +126,7 @@ server.listen(PORT, '127.0.0.1', async () => {
     console.log('Running acceptance: connected-concept preview and lesson trail...');
     await page.goto(`${baseUrl}#not-null-assertion`, { waitUntil: 'networkidle' });
     await expectConcept('Not-null assertion');
+    await page.getByRole('button', { name: 'Study focused lesson' }).click();
     await page.getByRole('button', { name: 'Nullable types', exact: true }).click();
     const preview = page.getByRole('dialog', { name: 'Concept preview: Nullable types' });
     await preview.getByText('Prerequisite concept').waitFor({ state: 'visible' });
@@ -160,7 +156,7 @@ server.listen(PORT, '127.0.0.1', async () => {
     await page.goto(`${baseUrl}#platform-types`, { waitUntil: 'networkidle' });
     await expectConcept('Platform types');
     assert.equal(await page.getByRole('heading', { name: 'Interview practice' }).count(), 0);
-    await page.getByRole('button', { name: 'Study this concept' }).click();
+    await page.getByRole('button', { name: 'Study focused lesson' }).click();
     await page.getByRole('button', { name: 'Continue to interview practice' }).click();
     const practice = page.getByRole('region', { name: 'Interview practice' });
     await practice.getByText(/Java API returns an unannotated String/).waitFor({ state: 'visible' });
@@ -188,6 +184,7 @@ server.listen(PORT, '127.0.0.1', async () => {
     assert.equal(await page.getByRole('heading', { name: 'Interview practice' }).count(), 0);
     assert.equal(await page.getByRole('heading', { name: 'Essential points' }).count(), 0);
     assert.equal(await page.getByRole('textbox', { name: 'Optional scratch answer' }).count(), 0);
+    await page.getByRole('button', { name: 'Study focused lesson' }).click();
     await page.getByRole('button', { name: 'Continue to interview practice' }).click();
     const revisitedPractice = page.getByRole('region', { name: 'Interview practice' });
     assert.equal(await revisitedPractice.getByRole('textbox', { name: 'Optional scratch answer' }).inputValue(), '');

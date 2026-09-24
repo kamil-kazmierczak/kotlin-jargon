@@ -7,7 +7,7 @@ await withCurriculumPreview(5603, async ({ page, errors, baseUrl }) => {
   await page.goto(baseUrl + '#custom-contracts');
   await page.evaluate(() => localStorage.clear());
   const lesson = page.getByRole('complementary', { name: 'User-defined contracts and flow analysis concept' });
-  await lesson.getByRole('button', { name: 'Study this concept' }).click();
+  await lesson.getByRole('button', { name: 'Study focused lesson' }).click();
   for (const [, name] of LESSON_SECTIONS) {
     await lesson.getByRole('heading', { name, exact: true }).waitFor();
   }

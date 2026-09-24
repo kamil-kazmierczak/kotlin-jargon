@@ -239,45 +239,45 @@
 }
 
 /* Monospace Architectural Prose Styling for Markdown */
-.prose-fp {
+.prose-kotlin {
   font-family: 'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
 }
-.prose-fp p {
+.prose-kotlin p {
   margin-bottom: 0.85rem;
   line-height: 1.65;
 }
-.prose-fp p:last-child {
+.prose-kotlin p:last-child {
   margin-bottom: 0;
 }
-.prose-fp strong {
+.prose-kotlin strong {
   font-weight: 700;
   color: var(--text-primary);
 }
-.prose-fp em {
+.prose-kotlin em {
   font-style: italic;
   opacity: 0.9;
 }
-.prose-fp ul {
+.prose-kotlin ul {
   list-style-type: disc;
   padding-left: 1.25rem;
   margin-top: 0.5rem;
   margin-bottom: 0.85rem;
 }
-.prose-fp ol {
+.prose-kotlin ol {
   list-style-type: decimal;
   padding-left: 1.25rem;
   margin-top: 0.5rem;
   margin-bottom: 0.85rem;
 }
-.prose-fp li {
+.prose-kotlin li {
   margin-top: 0.35rem;
   margin-bottom: 0.35rem;
   line-height: 1.55;
 }
-.prose-fp li::marker {
+.prose-kotlin li::marker {
   color: var(--text-muted);
 }
-.prose-fp code {
+.prose-kotlin code {
   font-family: inherit;
   font-size: 0.85em;
   padding: 0.15em 0.35em;
@@ -286,7 +286,7 @@
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
-.prose-fp blockquote {
+.prose-kotlin blockquote {
   border-left: 2px solid var(--border-focus);
   padding-left: 0.75rem;
   margin-top: 0.75rem;
@@ -294,7 +294,7 @@
   opacity: 0.85;
   font-style: italic;
 }
-.prose-fp a {
+.prose-kotlin a {
   text-decoration: underline;
   text-underline-offset: 3px;
   font-weight: 500;
@@ -302,17 +302,17 @@
   opacity: 0.9;
   transition: opacity 0.15s ease;
 }
-.prose-fp a:hover {
+.prose-kotlin a:hover {
   opacity: 1;
 }
-.prose-fp h1, .prose-fp h2, .prose-fp h3, .prose-fp h4, .prose-fp h5, .prose-fp h6 {
+.prose-kotlin h1, .prose-kotlin h2, .prose-kotlin h3, .prose-kotlin h4, .prose-kotlin h5, .prose-kotlin h6 {
   font-weight: 700;
   letter-spacing: -0.01em;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
-.prose-fp hr {
+.prose-kotlin hr {
   border-color: var(--border-subtle);
   margin-top: 1rem;
   margin-bottom: 1rem;
