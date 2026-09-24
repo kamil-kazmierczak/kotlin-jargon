@@ -30,9 +30,9 @@ A function parameter of type `RouteBuilder.() -> Unit` runs with a receiver, so 
 
 ## Example
 
-The result is an immutable snapshot, so a caller cannot mutate the builder's internal list after construction.
+The nested `group` block has a second marked receiver. Its `post` call resolves on `GroupBuilder`; an unqualified `get` inside that block would be rejected because it belongs to the outer marked `RouteBuilder`. The returned list is a detached snapshot, so later builder changes cannot alter it.
 
-```kotlin run id=advanced-dsl file=Routes.kt main=RoutesKt expected=GET:/orders
+```kotlin run id=advanced-dsl file=Routes.kt main=RoutesKt expected=GET:/health,POST:/orders
 @DslMarker
 annotation class RouteDsl
 
@@ -40,13 +40,30 @@ annotation class RouteDsl
 class RouteBuilder {
     private val entries = mutableListOf<String>()
     fun get(path: String) { entries += "GET:$path" }
+    fun group(prefix: String, block: GroupBuilder.() -> Unit) {
+        GroupBuilder(prefix, entries).block()
+    }
     fun build(): List<String> = entries.toList()
+}
+
+@RouteDsl
+class GroupBuilder(private val prefix: String, private val entries: MutableList<String>) {
+    fun post(path: String) { entries += "POST:$prefix$path" }
 }
 
 fun routes(block: RouteBuilder.() -> Unit): List<String> =
     RouteBuilder().apply(block).build()
 
-fun main() = println(routes { get("/orders") }.single()) // GET:/orders
+fun main() {
+    val configured = routes {
+        get("/health")
+        group("/orders") {
+            post("")
+            // get("/wrong") would require an explicit outer receiver.
+        }
+    }
+    println(configured.joinToString(",")) // GET:/health,POST:/orders
+}
 ```
 
 ## Java comparison
