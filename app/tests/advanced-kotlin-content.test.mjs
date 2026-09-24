@@ -18,17 +18,17 @@ const pathIds = [
 ];
 const referenceIds = ['explicit-backing-fields'];
 
-test('advanced group is connected and assessable in preview pending human review', () => {
+test('advanced group is verified, connected, and assessable in production', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-advanced-boundaries');
   assert.deepEqual(group.conceptIds, pathIds);
   assert.equal(group.scenario.stages.length, 5);
   assert.ok(group.scenario.debrief.rubric.length >= 5);
-  assert.equal(production.studyPaths.some(({ id }) => id === group.id), false);
+  assert.equal(production.studyPaths.some(({ id }) => id === group.id), true);
 
   const concepts = new Map(preview.concepts.map((concept) => [concept.id, concept]));
   for (const id of [...pathIds, ...referenceIds]) {
     const concept = concepts.get(id);
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.profile, 'substantial');
     assert.equal(concept.curriculum.categoryId, 'advanced-kotlin');
     assert.notEqual(concept.curriculum.depth, 'core');
@@ -36,7 +36,7 @@ test('advanced group is connected and assessable in preview pending human review
     assert.ok(concept.interview.question);
     assert.ok(concept.lesson.codeBlocks.some(({ verification }) => verification === 'run'));
     assert.ok(concept.provenance.sources.some(({ url }) => new URL(url).hostname === 'kotlinlang.org'));
-    assert.equal(production.concepts.some((published) => published.id === id), false);
+    assert.equal(production.concepts.some((published) => published.id === id), true);
   }
   assert.deepEqual(concepts.get(referenceIds[0]).curriculum.studyPaths, []);
   assert.ok(pathIds.every((id) => concepts.get(id).curriculum.studyPaths.length === 1));

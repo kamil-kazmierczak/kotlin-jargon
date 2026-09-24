@@ -4,9 +4,18 @@ title: Runtime reflection at dynamic boundaries
 profile: substantial
 category: advanced-kotlin
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [jvm-execution, java-callable-surface]
 relatedIds: [annotation-processing-boundaries, generic-runtime-types]
 aliases: [KClass, kotlin-reflect, Java reflection, memberProperties]

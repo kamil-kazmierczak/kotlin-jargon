@@ -110,12 +110,14 @@ testing. Kamil approved its pedagogy, official sources, interview realism, and c
 guarantee wording on 2026-09-24. Runnable examples use explicit handshakes or virtual time where
 scheduling affects the claim.
 
-The advanced Kotlin group for issue #28 is review-ready. Its path covers user contracts,
+The advanced Kotlin group for issue #28 is verified. Its path covers user contracts,
 runtime reflection, annotation consumers, type-safe DSLs, and Kotlin 2.4 context parameters;
 explicit backing fields remain a searchable reference off the path. The staged adapter scenario
 asks when each specialized feature earns its cost. The examples target the pinned baseline, and
 the lessons distinguish stable 2.4 syntax from experimental opt-ins and JVM observations.
-Production publication waits for the human review and confirming commit described above.
+Kamil approved pedagogy, primary sources, interview realism, stability labels, version wording,
+and the scenario on 2026-09-24. The confirming commit and later reference-only commit complete
+the publication attestation described above.
 
 ## Verification
 

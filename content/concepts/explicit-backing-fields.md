@@ -5,9 +5,18 @@ profile: substantial
 category: advanced-kotlin
 depth: reference
 pathExclusionReason: Specialized Kotlin 2.4 property syntax is useful at selected API boundaries but is not required for the main advanced design scenario.
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [declarations-properties, immutability]
 relatedIds: [context-parameters, type-safe-dsls]
 aliases: [field declaration, backing field, read-only facade, Kotlin 2.4 properties]

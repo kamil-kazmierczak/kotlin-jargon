@@ -4,9 +4,18 @@ title: Type-safe builders and DSL receiver scope
 profile: substantial
 category: advanced-kotlin
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [extensions-receivers, lambdas-higher-order-functions]
 relatedIds: [custom-contracts, annotation-processing-boundaries]
 aliases: [DSL builder, @DslMarker, lambda with receiver, nested receiver]

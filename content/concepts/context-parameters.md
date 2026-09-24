@@ -4,9 +4,18 @@ title: Context parameters and explicit dependencies
 profile: substantial
 category: advanced-kotlin
 depth: deep-dive
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [functions, extensions-receivers]
 relatedIds: [type-safe-dsls, coroutine-context-dispatchers]
 aliases: [context parameters, implicit dependency, Kotlin 2.4 context arguments]
