@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { soundEffects } from '../utils/audio';
 import { ASSESSMENT_FILTER_STATUSES } from '../state/applicationState.mjs';
-import { getProgressVisibleIds } from '../state/graphVisibility.mjs';
+import { getGraphVisibleIds, getLinkEmphasis } from '../state/graphVisibility.mjs';
 import { ASSESSMENT_DEFINITIONS, GROUP_ASSESSMENT_DEFINITIONS } from '../state/progress.mjs';
 
 const ASSESSMENT_MARKERS = Object.fromEntries(
@@ -14,14 +14,6 @@ const GROUP_ASSESSMENT_LABELS = Object.fromEntries(
 const getAssessmentMarker = (assessments, conceptId) => (
   ASSESSMENT_MARKERS[assessments[conceptId]?.status || 'not-assessed']
 );
-
-const getFilteredVisibleIds = (nodes, links, assessments, filters) => {
-  const baseVisibleNodes = nodes.filter((node) => {
-    const categoryMatches = filters.categoryIds.length === 0 || filters.categoryIds.includes(node.category);
-    return categoryMatches && filters.depths.includes(node.depth);
-  });
-  return getProgressVisibleIds(baseVisibleNodes, links, assessments, filters.assessmentStatuses || []);
-};
 
 function stableUnitInterval(value) {
   let hash = 2166136261;
@@ -60,7 +52,11 @@ export default function GraphCanvas({
   const containerRef = useRef(null);
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [tooltip, setTooltip] = useState(null);
-  const accessibleVisibleIds = getFilteredVisibleIds(graphData.nodes, graphData.links, assessments, filters);
+  const visibleIds = useMemo(() => getGraphVisibleIds(
+    graphData.nodes, graphData.links, assessments, filters, temporaryReveal
+  ), [graphData, assessments, filters, temporaryReveal]);
+  const visibleSelectedId = isPanelOpen && visibleIds.has(selectedNodeId) ? selectedNodeId : null;
+  const activeId = visibleIds.has(hoveredNodeId) ? hoveredNodeId : visibleSelectedId;
 
   // Simulation and camera state refs (mutable for 60fps render loop)
   const stateRef = useRef({
@@ -326,11 +322,11 @@ export default function GraphCanvas({
       ctx.translate(camera.x, camera.y);
 
       // Identify active/highlighted set
-      const activeId = hoveredNodeId || selectedNodeId;
       let connectedIds = new Set();
       if (activeId) {
         connectedIds.add(activeId);
         links.forEach(l => {
+          if (getLinkEmphasis(l, { visibleIds, selectedNodeId: visibleSelectedId }) === 'hidden') return;
           if (l.source.id === activeId) connectedIds.add(l.target.id);
           if (l.target.id === activeId) connectedIds.add(l.source.id);
         });
@@ -351,23 +347,14 @@ export default function GraphCanvas({
         });
       }
 
-      const visibleIds = new Set();
-      if (temporaryReveal?.conceptId) {
-        visibleIds.add(temporaryReveal.conceptId);
-        links.forEach((link) => {
-          if (link.source.id === temporaryReveal.conceptId) visibleIds.add(link.target.id);
-          if (link.target.id === temporaryReveal.conceptId) visibleIds.add(link.source.id);
-        });
-      } else {
-        getFilteredVisibleIds(nodes, links, assessments, filters).forEach((id) => visibleIds.add(id));
-      }
       const activePath = studyPaths.find((path) => path.id === studyPathOverlay?.pathId);
+      const visibleCategories = new Set(nodes.filter(({ id }) => visibleIds.has(id)).map(({ category }) => category));
 
       // Render Cluster Backdrop Glows and Constellation Rings
       Object.keys(clusterCenters).forEach(catId => {
         const cat = categories[catId];
         const center = clusterCenters[catId];
-        if (!cat || !center) return;
+        if (!cat || !center || !visibleCategories.has(catId)) return;
         const color = useCategoryColors ? cat.color : (isDark ? '#38bdf8' : '#0284c7');
         
         // Radial ambient glow
@@ -413,7 +400,9 @@ export default function GraphCanvas({
       });
 
       // Helper to draw curved link with arrow
-      const drawCurvedLink = (l, isHighlight, isDimmed, isSearchDimmed) => {
+      const drawCurvedLink = (l, emphasis) => {
+        const isHighlight = emphasis === 'highlighted';
+        const isDimmed = emphasis === 'dimmed';
         const sx = l.source.x;
         const sy = l.source.y;
         const tx = l.target.x;
@@ -432,6 +421,8 @@ export default function GraphCanvas({
           ? sourceCategory.color
           : (isDark ? '#93c5fd' : '#2563eb');
 
+        ctx.save();
+        ctx.globalAlpha = isDimmed ? 0.16 : 1;
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.quadraticCurveTo(midX, midY, tx, ty);
@@ -456,8 +447,7 @@ export default function GraphCanvas({
 
           }
         } else {
-          let alpha = isDark ? 0.22 : 0.28;
-          if (isDimmed || isSearchDimmed) alpha = 0.04;
+          const alpha = isDark ? 0.22 : 0.28;
           ctx.strokeStyle = isDark ? `rgba(255, 255, 255, ${alpha})` : `rgba(15, 23, 42, ${alpha})`;
           ctx.lineWidth = l.type === 'related' ? 1.0 : 1.4;
           ctx.setLineDash([]);
@@ -481,22 +471,20 @@ export default function GraphCanvas({
           ctx.fill();
           ctx.restore();
         }
+        ctx.restore();
       };
 
       // Render Links
       links.forEach(l => {
-        const isHighlight = activeId && (l.source.id === activeId || l.target.id === activeId);
-        const isDimmed = activeId && !isHighlight;
-        const isSearchDimmed = searchMatchedIds && (!searchMatchedIds.has(l.source.id) || !searchMatchedIds.has(l.target.id));
-        const isHidden = !visibleIds.has(l.source.id) || !visibleIds.has(l.target.id);
-        drawCurvedLink(l, isHighlight, isDimmed || isHidden, isSearchDimmed || isHidden);
+        const emphasis = getLinkEmphasis(l, { visibleIds, selectedNodeId: visibleSelectedId, activeId, searchMatchedIds });
+        if (emphasis !== 'hidden') drawCurvedLink(l, emphasis);
       });
 
       if (activePath) {
         for (let index = 1; index < activePath.conceptIds.length; index += 1) {
           const source = stateRef.current.nodeMap.get(activePath.conceptIds[index - 1]);
           const target = stateRef.current.nodeMap.get(activePath.conceptIds[index]);
-          if (!source || !target) continue;
+          if (!source || !target || !visibleIds.has(source.id) || !visibleIds.has(target.id)) continue;
           ctx.beginPath(); ctx.moveTo(source.x, source.y); ctx.lineTo(target.x, target.y);
           ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 4; ctx.setLineDash([8, 5]); ctx.stroke(); ctx.setLineDash([]);
         }
@@ -504,10 +492,11 @@ export default function GraphCanvas({
 
       // Render Nodes
       nodes.forEach(n => {
-        const isSelected = n.id === selectedNodeId;
+        if (!visibleIds.has(n.id)) return;
+        const isSelected = n.id === visibleSelectedId;
         const isHovered = n.id === hoveredNodeId;
         const isConnected = connectedIds.has(n.id);
-        const isDimmed = (activeId && !isConnected) || !visibleIds.has(n.id);
+        const isDimmed = activeId && !isConnected;
         const isSearchMatched = !searchMatchedIds || searchMatchedIds.has(n.id);
 
         const cat = categories[n.category] || {};
@@ -659,7 +648,7 @@ export default function GraphCanvas({
         cancelAnimationFrame(stateRef.current.animId);
       }
     };
-  }, [categories, selectedNodeId, hoveredNodeId, searchQuery, filters, temporaryReveal, studyPathOverlay, studyPaths, assessments, useCategoryColors, isDark]);
+  }, [categories, visibleSelectedId, activeId, hoveredNodeId, searchQuery, visibleIds, studyPathOverlay, studyPaths, assessments, useCategoryColors, isDark]);
 
   // Convert client mouse coordinate to world coordinates
   const clientToWorld = useCallback((clientX, clientY) => {
@@ -678,20 +667,16 @@ export default function GraphCanvas({
   // Find node under world coordinates
   const getNodeAt = useCallback((worldX, worldY) => {
     const { nodes } = stateRef.current;
-    const progressVisibleIds = getFilteredVisibleIds(nodes, stateRef.current.links, assessments, filters);
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
-      const isVisible = temporaryReveal?.conceptId
-        ? n.id === temporaryReveal.conceptId || stateRef.current.links.some((link) => (link.source.id === n.id && link.target.id === temporaryReveal.conceptId) || (link.target.id === n.id && link.source.id === temporaryReveal.conceptId))
-        : progressVisibleIds.has(n.id);
-      if (!isVisible) continue;
+      if (!visibleIds.has(n.id)) continue;
       const dist = Math.hypot(n.x - worldX, n.y - worldY);
       if (dist <= n.radius + 8) {
         return n;
       }
     }
     return null;
-  }, [filters, temporaryReveal, assessments]);
+  }, [visibleIds]);
 
   // Mouse interaction handlers
   const handleMouseDown = (e) => {
@@ -775,8 +760,10 @@ export default function GraphCanvas({
     const { dragNode, isPanning } = stateRef.current;
     
     if (dragNode) {
-      onSelectNode(dragNode.id);
-      soundEffects.select(soundEnabled);
+      if (visibleIds.has(dragNode.id)) {
+        onSelectNode(dragNode.id);
+        soundEffects.select(soundEnabled);
+      }
       stateRef.current.dragNode = null;
     } else if (!isPanning && e.target === canvasRef.current) {
       const pos = clientToWorld(e.clientX, e.clientY);
@@ -877,11 +864,11 @@ export default function GraphCanvas({
           );
         })}
         {temporaryReveal && <button onClick={onReturnToPreviousView} className="mt-2 underline">Return to previous view</button>}
-        <p className="mt-2 opacity-60">Solid arrows: prerequisites · thin lines: related · amber dash: study path</p>
+        <p className="mt-2 opacity-60">Solid arrows: prerequisites · thin lines: related to the open concept · amber dash: study path</p>
       </div>
 
       <div className="sr-only">
-        {graphData.nodes.filter((node) => accessibleVisibleIds.has(node.id)).map((node) => (
+        {graphData.nodes.filter((node) => visibleIds.has(node.id)).map((node) => (
           <button key={node.id} onClick={() => onSelectNode(node.id)}>
             Open {node.name} from graph · {getAssessmentMarker(assessments, node.id).label}
           </button>
@@ -889,7 +876,7 @@ export default function GraphCanvas({
       </div>
 
       {/* Floating Hover Tooltip */}
-      {tooltip && (
+      {tooltip && visibleIds.has(tooltip.node.id) && (
         <div
           className={`absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 px-3 py-2 shadow-2xl backdrop-blur-md border max-w-xs transition-opacity duration-150 font-mono ${
             isDark
