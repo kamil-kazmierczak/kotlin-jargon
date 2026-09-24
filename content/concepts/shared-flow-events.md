@@ -4,9 +4,19 @@ title: SharedFlow for broadcast events
 profile: substantial
 category: streams-concurrency
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewReference: commit:06cfe81
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [flow-cold-lifecycle, state-flow-state, coroutine-ownership]
 relatedIds: [flow-backpressure, coroutine-channels]
 aliases: [SharedFlow, MutableSharedFlow, shareIn, replay cache]

@@ -23,7 +23,7 @@ const conceptIds = [
   'coroutine-testing'
 ];
 
-test('streams and concurrency form a complete review-ready study path', () => {
+test('streams and concurrency form a complete verified study path', () => {
   const group = preview.studyPaths.find(({ id }) => id === 'kotlin-streams-concurrency');
   assert.equal(group.name, 'Kotlin asynchronous streams and concurrency');
   assert.deepEqual(group.conceptIds, conceptIds);
@@ -33,7 +33,7 @@ test('streams and concurrency form a complete review-ready study path', () => {
   const concepts = new Map(preview.concepts.map((concept) => [concept.id, concept]));
   for (const id of conceptIds) {
     const concept = concepts.get(id);
-    assert.equal(concept.publication.status, 'review-ready');
+    assert.equal(concept.publication.status, 'verified');
     assert.equal(concept.profile, 'substantial');
     assert.equal(concept.curriculum.categoryId, 'streams-concurrency');
     assert.ok(concept.lesson.knowledgeCheck);
@@ -42,7 +42,7 @@ test('streams and concurrency form a complete review-ready study path', () => {
     assert.ok(concept.provenance.sources.some(({ url }) => new URL(url).hostname === 'kotlinlang.org'));
   }
 
-  assert.equal(production.studyPaths.some(({ id }) => id === group.id), false);
+  assert.equal(production.studyPaths.some(({ id }) => id === group.id), true);
 });
 
 test('graph prerequisites connect stream choices to ownership, collections, types, and tests', () => {

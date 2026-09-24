@@ -4,9 +4,19 @@ title: Channels for point-to-point work
 profile: substantial
 category: streams-concurrency
 depth: core
-publicationStatus: review-ready
-publicationHistory: [draft, review-ready]
+publicationStatus: verified
+publicationHistory: [draft, review-ready, verified]
 baseline: kotlin-jvm-2026-09
+publishedAt: 2026-09-24
+verifiedAt: 2026-09-24
+reviewerKind: human
+reviewedBy: kamil-kazmierczak
+reviewedAt: 2026-09-24
+reviewReference: commit:06cfe81
+reviewPedagogicalClarity: true
+reviewAuthoritativeSupport: true
+reviewInterviewRealism: true
+reviewGuaranteeWording: true
 prerequisiteIds: [coroutine-ownership, flow-backpressure, generic-constraints]
 relatedIds: [shared-flow-events, shared-state-synchronization]
 aliases: [Channel, rendezvous channel, worker queue]

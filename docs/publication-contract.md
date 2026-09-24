@@ -103,6 +103,13 @@ explicit handshakes instead of sleep-based timing. Human review of pedagogy, off
 interview realism, and implementation-sensitive wording was recorded in the approval commit
 before the group entered the production curriculum.
 
+The streams-and-concurrency group for issue #27 adds seven verified lessons and a staged
+order-update scenario. It distinguishes cold Flow collection, hot state and event streams,
+bounded overload policies, Channel work distribution, shared-state coordination, and coroutine
+testing. Kamil approved its pedagogy, official sources, interview realism, and concurrency and
+guarantee wording on 2026-09-24. Runnable examples use explicit handshakes or virtual time where
+scheduling affects the claim.
+
 ## Verification
 
 Run the complete local release gate from the repository root:
