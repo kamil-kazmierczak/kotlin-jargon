@@ -81,6 +81,13 @@
       "description": "Suspension, owned coroutine lifetimes, context, cancellation, and failure propagation.",
       "color": "#6d28d9",
       "symbol": "↝"
+    },
+    {
+      "id": "streams-concurrency",
+      "name": "Streams and concurrency",
+      "description": "Flow lifecycles, hot state and event streams, delivery and overload policy, and coordination of shared state.",
+      "color": "#047857",
+      "symbol": "∿"
     }
   ],
   "studyPaths": [
@@ -556,6 +563,80 @@
             "Traces request cancellation and cooperative observation points.",
             "Explains async failure propagation even without await.",
             "Chooses a bounded supervision policy and deterministic verification."
+          ]
+        }
+      }
+    },
+    {
+      "id": "kotlin-streams-concurrency",
+      "name": "Kotlin asynchronous streams and concurrency",
+      "description": "Choose cold flows, hot state and event streams, channels, overload policies, and synchronization by ownership, delivery, and shared-state requirements.",
+      "conceptIds": [
+        "flow-cold-lifecycle",
+        "state-flow-state",
+        "shared-flow-events",
+        "flow-backpressure",
+        "coroutine-channels",
+        "shared-state-synchronization",
+        "coroutine-testing"
+      ],
+      "scenario": {
+        "title": "Design a bounded order update pipeline",
+        "context": "A backend processes order updates from persisted records, holds current order state, emits client notifications, and runs export workers. A client or exporter may be slow or absent. Durable order state must survive process restart, while every in-memory coroutine still needs an owner. Use the runnable examples in the lessons to defend the design.",
+        "stages": [
+          {
+            "id": "choose-source-lifetime",
+            "kind": "Lifecycle choice",
+            "prompt": "The repository exposes order updates to request handlers and also feeds a long-lived status view. Should the source be a cold Flow, a hot stream, or both? Name who starts and cancels each collection.",
+            "feedback": "Keep a cold Flow when each collector should run the query or subscription independently. Share one upstream only when consumers should reuse the same active work, and make its scope and SharingStarted policy explicit with shareIn or stateIn. A collector is still owned by its collecting coroutine and stops when that Job is cancelled.",
+            "nextConstraint": "The status view must show the current order snapshot immediately, even if it subscribes after earlier changes."
+          },
+          {
+            "id": "separate-state-from-events",
+            "kind": "Semantic choice",
+            "prompt": "Choose a representation for the current order snapshot and for transient notifications such as “export requested”. Which values should a late subscriber receive, and can either stream complete normally?",
+            "feedback": "Use StateFlow for the current snapshot: it has an initial/current value and a new collector gets the latest value. Use SharedFlow for broadcast events when multiple active subscribers should observe emissions, choosing replay deliberately. StateFlow and SharedFlow are hot and do not complete normally; represent completion or failure as data when consumers need to see it.",
+            "nextConstraint": "Some notification collectors may be absent during an emission, and active collectors can process at different speeds."
+          },
+          {
+            "id": "defend-delivery",
+            "kind": "Delivery choice",
+            "prompt": "Should the notification path replay an event to a later subscriber? Should export jobs be broadcast to every worker or handled by one available worker? What survives a process crash?",
+            "feedback": "A SharedFlow broadcasts to active subscribers and its replay cache only retains the configured recent values; default MutableSharedFlow has no replay, so emissions with no subscribers are lost. A Channel distributes each element to one receiver, making it suitable for an in-process work queue with an owner responsible for closing it. Neither primitive is durable: persist an order transition or use a durable broker/outbox when crash recovery is required.",
+            "nextConstraint": "One export subscriber falls behind while new order snapshots continue to arrive."
+          },
+          {
+            "id": "select-overload-policy",
+            "kind": "Backpressure choice",
+            "prompt": "Choose a bounded policy for export records and for replaceable order snapshots. Which source should suspend, which may conflate, and when is dropping an event acceptable?",
+            "feedback": "Use a bounded buffer with SUSPEND when every export item must be processed and the producer can slow down. For replaceable snapshots, conflate or DROP_OLDEST can keep the latest value while sacrificing intermediate states. DROP_LATEST or collectLatest are appropriate only when the product contract allows the corresponding event or in-progress work to be discarded. An unlimited buffer can turn a slow consumer into growing memory use.",
+            "nextConstraint": "Concurrent handlers also update inventory and publish the resulting order snapshot."
+          },
+          {
+            "id": "protect-shared-invariants",
+            "kind": "State coordination",
+            "prompt": "How do you prevent two handlers from overselling the same inventory? Compare one atomic counter, an immutable StateFlow snapshot, a Mutex-protected multi-field update, and confinement to one owner coroutine.",
+            "feedback": "An atomic operation fits a single counter. StateFlow.update makes a single immutable snapshot replacement atomic, and its transformation should be side-effect free because it may be retried. Use a Mutex for a compound invariant with no natural single owner, or send commands to one owner coroutine/channel and keep all related mutation confined there. Publishing a flow does not by itself make separately mutable fields safe.",
+            "nextConstraint": "The team needs deterministic tests for subscriber timing, cancellation, buffer overflow, and a delayed export."
+          },
+          {
+            "id": "test-contracts",
+            "kind": "Verification plan",
+            "prompt": "Describe a deterministic test plan for these contracts. Which delays can use virtual time, and how will you know a collector or worker is ready before emitting?",
+            "feedback": "Use kotlinx-coroutines-test runTest and its TestCoroutineScheduler to advance delays without wall-clock waiting. Use explicit start handshakes, channel rendezvous, runCurrent, or controlled test dispatchers for collector and cancellation ordering. runTest normally uses one test thread and does not prove thread-safety under parallel execution; test atomic or mutex invariants separately with appropriate concurrent dispatchers and deterministic completion waits.",
+            "nextConstraint": "Review the owner, subscriber contract, delivery loss, buffer policy, shared-state invariant, and evidence as one backend design."
+          }
+        ],
+        "debrief": {
+          "connections": "Coroutine ownership defines collection and sharing lifetime. Cold Flow describes how work starts; StateFlow represents current state; SharedFlow broadcasts recent or live events; Channel queues work for one receiver; buffer operators choose how producers and consumers interact; synchronization protects mutable invariants; coroutine-test virtual time and handshakes make those contracts repeatable.",
+          "tradeOffs": "Sharing avoids duplicate upstream work but adds scope and start-policy decisions. Replay helps late consumers only for a bounded in-memory window. A channel can distribute work but cannot provide crash durability. Backpressure preserves values by slowing producers, while conflation or dropping keeps latency and memory bounded by discarding data. Mutexes protect compound state but serialize contenders; confinement simplifies invariants while requiring all access to pass through its owner.",
+          "rubric": [
+            "Names the owner and lifetime of each Flow collection and any shared upstream.",
+            "Uses StateFlow for current snapshots and defends SharedFlow replay and event-loss behavior.",
+            "Distinguishes broadcast subscribers from one-at-a-time Channel work distribution and identifies the durability boundary.",
+            "Chooses a bounded overload policy that matches whether intermediate values may be lost.",
+            "Protects a compound inventory invariant and distinguishes atomic update, mutex, and owner confinement.",
+            "Uses virtual time and explicit handshakes while recognizing that runTest does not provide parallel stress coverage."
           ]
         }
       }

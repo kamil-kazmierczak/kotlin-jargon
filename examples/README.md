@@ -19,5 +19,6 @@ Use `order=java-first` on every block in a mixed fixture when Kotlin consumes de
 Java; the default order supports Java consuming Kotlin. `fragment` and `pseudocode` are
 intentionally excluded; they need no identity or source filename.
 
-The wrapper, Kotlin plugin/compiler, language/API versions, JVM target, coroutines modules, and
-Temurin baseline are pinned in this directory. CI must provide Eclipse Temurin 25.0.1+8-LTS.
+The wrapper, Kotlin plugin/compiler, language/API versions, JVM target, coroutines modules
+(core, JDK 8, and test), and Temurin baseline are pinned in this directory. CI must provide Eclipse
+Temurin 25.0.1+8-LTS.

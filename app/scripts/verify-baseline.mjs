@@ -53,6 +53,7 @@ const requiredBuildConfiguration = [
   `jvmTarget = JvmTarget.JVM_${manifest.baseline.jvmTarget}`,
   `org.jetbrains.kotlinx:kotlinx-coroutines-core:${manifest.baseline.coroutines}`,
   `org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:${manifest.baseline.coroutines}`,
+  `org.jetbrains.kotlinx:kotlinx-coroutines-test:${manifest.baseline.coroutines}`,
   `org.jetbrains.kotlin:kotlin-compiler-embeddable:${manifest.baseline.kotlinCompiler}`,
   `'${manifest.baseline.jdk.split(' ').at(-1)}'`,
   `args '-language-version', '${manifest.baseline.languageVersion}', '-api-version', '${manifest.baseline.apiVersion}', '-jvm-target', '${manifest.baseline.jvmTarget}'`
