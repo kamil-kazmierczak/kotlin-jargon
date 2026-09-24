@@ -75,7 +75,9 @@ try {
   assert.equal(await page.getByRole('complementary').count(), 0, 'Graph controls must not select nodes underneath');
   await graph.getByRole('button', { name: 'Path: Kotlin asynchronous streams and concurrency', exact: true }).click();
   await page.mouse.move(1100, 700);
+  const cameraBeforeZoom = await graph.getAttribute('data-camera');
   await page.mouse.wheel(0, -240);
+  await page.waitForFunction((before) => document.querySelector('[aria-label="Concept graph"]').dataset.camera !== before, cameraBeforeZoom);
   const graphBefore = await graph.evaluate((element) => ({
     camera: element.dataset.camera, selected: element.dataset.selectedConcept,
     pressed: [...element.querySelectorAll('[aria-pressed="true"]')].map((button) => button.textContent)
